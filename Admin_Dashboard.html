@@ -283,7 +283,7 @@
                 const res = await fetch(apiUrl, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `token ${token}`,
+                        'Authorization': `Bearer ${token}`,
                         'Accept': 'application/vnd.github.v3+json',
                         'Cache-Control': 'no-cache'
                     }
@@ -294,7 +294,7 @@
                     const branchRes = await fetch(branchUrl, {
                         method: 'GET',
                         headers: {
-                            'Authorization': `token ${token}`,
+                            'Authorization': `Bearer ${token}`,
                             'Accept': 'application/vnd.github.v3+json',
                             'Cache-Control': 'no-cache'
                         }
