@@ -234,18 +234,38 @@
 
         // ページロード時
         window.addEventListener('DOMContentLoaded', async () => {
-            await fetchRemoteData();
-            initLocalStorage();
-            initQuill();
-            renderAll();
+            try {
+                await fetchRemoteData();
+            } catch (e) {
+                console.error('fetchRemoteData failed:', e);
+            }
+            
+            try {
+                initLocalStorage();
+            } catch (e) {
+                console.error('initLocalStorage failed:', e);
+            }
+            
+            try {
+                initQuill();
+            } catch (e) {
+                console.error('initQuill failed:', e);
+            }
+            
+            try {
+                renderAll();
+            } catch (e) {
+                console.error('renderAll failed:', e);
+            }
         });
 
         function showSyncNotice() {
             const banner = document.getElementById('syncNoticeBanner');
             if (!banner) return;
             
-            const examsDirty = isDirty('exams');
-            const univsDirty = isDirty('universities');
+            const hasSyncHelper = typeof isDirty === 'function';
+            const examsDirty = hasSyncHelper ? isDirty('exams') : false;
+            const univsDirty = hasSyncHelper ? isDirty('universities') : false;
             
             if (examsDirty || univsDirty) {
                 banner.style.display = 'block';
@@ -263,17 +283,19 @@
         async function forceSyncServer() {
             if (!confirm('本当にサーバーのデータで強制上書きしますか？ローカルの変更は失われます。')) return;
             try {
-                const resExams = await fetchWithCacheBusting('data/exams.json');
+                const fetchFunc = typeof fetchWithCacheBusting === 'function' ? fetchWithCacheBusting : fetch;
+                
+                const resExams = await fetchFunc('data/exams.json');
                 if (resExams.ok) {
                     const data = await resExams.json();
                     localStorage.setItem('vector_exam_news', JSON.stringify(data));
-                    setDirty('exams', false);
+                    if (typeof setDirty === 'function') setDirty('exams', false);
                 }
-                const resUnivs = await fetchWithCacheBusting('data/universities.json');
+                const resUnivs = await fetchFunc('data/universities.json');
                 if (resUnivs.ok) {
                     const data = await resUnivs.json();
                     localStorage.setItem('vector_universities', JSON.stringify(data));
-                    setDirty('universities', false);
+                    if (typeof setDirty === 'function') setDirty('universities', false);
                 }
                 renderAll();
                 showSyncNotice();
@@ -285,16 +307,19 @@
 
         // リモートのデータを取得してローカルに同期
         async function fetchRemoteData() {
-            const exDirty = isDirty('exams');
-            const unDirty = isDirty('universities');
+            const hasSyncHelper = typeof isDirty === 'function';
+            const exDirty = hasSyncHelper ? isDirty('exams') : false;
+            const unDirty = hasSyncHelper ? isDirty('universities') : false;
             
             if (!exDirty) {
                 try {
-                    const responseExams = await fetchWithCacheBusting('data/exams.json');
+                    const responseExams = typeof fetchWithCacheBusting === 'function'
+                        ? await fetchWithCacheBusting('data/exams.json')
+                        : await fetch('data/exams.json');
                     if (responseExams.ok) {
                         const remoteExams = await responseExams.json();
                         localStorage.setItem('vector_exam_news', JSON.stringify(remoteExams));
-                        setDirty('exams', false);
+                        if (typeof setDirty === 'function') setDirty('exams', false);
                     }
                 } catch (e) {
                     console.warn('Could not fetch remote exam list. Using local storage.', e);
@@ -303,11 +328,13 @@
 
             if (!unDirty) {
                 try {
-                    const responseUnivs = await fetchWithCacheBusting('data/universities.json');
+                    const responseUnivs = typeof fetchWithCacheBusting === 'function'
+                        ? await fetchWithCacheBusting('data/universities.json')
+                        : await fetch('data/universities.json');
                     if (responseUnivs.ok) {
                         const remoteUnivs = await responseUnivs.json();
                         localStorage.setItem('vector_universities', JSON.stringify(remoteUnivs));
-                        setDirty('universities', false);
+                        if (typeof setDirty === 'function') setDirty('universities', false);
                     }
                 } catch (e) {
                     console.warn('Could not fetch remote university list. Using local storage.', e);
@@ -351,34 +378,71 @@
             }
         }
 
+        let isFallbackEditor = false;
+
+        function setupFallbackEditor() {
+            isFallbackEditor = true;
+            const container = document.getElementById('editor-container');
+            if (container) {
+                container.innerHTML = '<textarea id="fallback-editor" style="width: 100%; height: 300px; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px;" placeholder="HTML形式で本文を入力してください。"></textarea>';
+            }
+        }
+
         // Quillエディタ初期化
         function initQuill() {
-            // BlotFormatterとそのアライメントフォーマットの登録
-            const BlotFormatter = QuillBlotFormatter2.default;
-            const { createImageAlignAttributor, createIframeAlignAttributor } = QuillBlotFormatter2;
-            Quill.register(createImageAlignAttributor(Quill), true);
-            Quill.register(createIframeAlignAttributor(Quill), true);
-            Quill.register('modules/blotFormatter2', BlotFormatter);
+            try {
+                if (typeof Quill === 'undefined') {
+                    throw new Error('Quill is not loaded');
+                }
 
-            const toolbarOptions = [
-                [{ 'font': [] }],
-                [{ 'size': ['small', false, 'large', 'huge'] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ 'color': [] }, { 'background': [] }],
-                [{ 'align': [] }],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                ['link', 'image', 'formula'],
-                ['clean']
-            ];
+                const quillModules = {
+                    toolbar: [
+                        [{ 'font': [] }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'align': [] }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link', 'image', 'formula'],
+                        ['clean']
+                    ]
+                };
 
-            quill = new Quill('#editor-container', {
-                modules: {
-                    toolbar: toolbarOptions,
-                    blotFormatter2: {}
-                },
-                theme: 'snow',
-                placeholder: 'ここに解答解説を記述してください。数式は「f(x)」ボタンからTeX記法で入力できます。画像や解説図もドラッグ＆ドロップで挿入可能です。'
-            });
+                // BlotFormatterとそのアライメントフォーマットの登録（安全に行う）
+                if (typeof QuillBlotFormatter2 !== 'undefined') {
+                    try {
+                        const BlotFormatter = QuillBlotFormatter2.default || QuillBlotFormatter2;
+                        
+                        if (typeof QuillBlotFormatter2.createImageAlignAttributor === 'function') {
+                            Quill.register(QuillBlotFormatter2.createImageAlignAttributor(Quill), true);
+                        } else if (BlotFormatter && typeof BlotFormatter.registerImageAlign === 'function') {
+                            BlotFormatter.registerImageAlign(Quill);
+                        }
+                        
+                        if (typeof QuillBlotFormatter2.createIframeAlignAttributor === 'function') {
+                            Quill.register(QuillBlotFormatter2.createIframeAlignAttributor(Quill), true);
+                        } else if (BlotFormatter && typeof BlotFormatter.registerIframeAlign === 'function') {
+                            BlotFormatter.registerIframeAlign(Quill);
+                        }
+                        
+                        Quill.register('modules/blotFormatter2', BlotFormatter);
+                        quillModules.blotFormatter2 = {};
+                    } catch (formatterError) {
+                        console.warn('Failed to register QuillBlotFormatter2:', formatterError);
+                    }
+                } else {
+                    console.warn('QuillBlotFormatter2 is not defined. Registering without image resizing.');
+                }
+
+                quill = new Quill('#editor-container', {
+                    modules: quillModules,
+                    theme: 'snow',
+                    placeholder: 'ここに解答解説を記述してください。数式は「f(x)」ボタンからTeX記法で入力できます。画像や解説図もドラッグ＆ドロップで挿入可能です。'
+                });
+            } catch (e) {
+                console.error("Quill initialization failed, falling back to textarea:", e);
+                setupFallbackEditor();
+            }
         }
 
         // 管理タブの切り替え
@@ -467,14 +531,15 @@
 
             list.push({ id, name, filePath });
             localStorage.setItem('vector_universities', JSON.stringify(list));
-            setDirty('universities', true);
+            if (typeof setDirty === 'function') setDirty('universities', true);
 
             const jsonStr = JSON.stringify(list, null, 2);
             syncUniv(jsonStr);
         }
 
         async function syncUniv(jsonStr) {
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 const btn = document.querySelector('#univForm button[type="submit"]');
                 const origText = btn.textContent;
                 btn.textContent = '同期中...';
@@ -482,7 +547,7 @@
 
                 try {
                     await pushToGitHub('data/universities.json', jsonStr, `Update universities.json via Admin Panel`);
-                    setDirty('universities', false);
+                    if (typeof setDirty === 'function') setDirty('universities', false);
                     alert('大学タブを追加し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     document.getElementById('univForm').reset();
                     renderUnivTable();
@@ -526,14 +591,15 @@
             let list = JSON.parse(localStorage.getItem('vector_universities') || '[]');
             list = list.filter(u => u.id !== id);
             localStorage.setItem('vector_universities', JSON.stringify(list));
-            setDirty('universities', true);
+            if (typeof setDirty === 'function') setDirty('universities', true);
 
             const jsonStr = JSON.stringify(list, null, 2);
 
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 try {
                     await pushToGitHub('data/universities.json', jsonStr, `Delete university ${id} via Admin Panel`);
-                    setDirty('universities', false);
+                    if (typeof setDirty === 'function') setDirty('universities', false);
                     alert('大学タブを削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     renderUnivTable();
                     updateUnivSelectDropdown();
@@ -604,7 +670,13 @@
             document.getElementById('examFileName').value = '';
             document.getElementById('examYear').value = new Date().getFullYear();
             document.getElementById('examUnivSelect').value = '';
-            quill.setContents([]);
+            
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                if (textarea) textarea.value = '';
+            } else if (quill) {
+                quill.setContents([]);
+            }
 
             document.getElementById('editorTitle').textContent = '解答速報の新規作成';
             document.getElementById('examSection').style.display = 'none';
@@ -627,7 +699,12 @@
             document.getElementById('examYear').value = target.year || 2026;
             document.getElementById('examUnivSelect').value = target.universityId;
             
-            quill.clipboard.dangerouslyPasteHTML(target.content);
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                if (textarea) textarea.value = target.content;
+            } else if (quill) {
+                quill.clipboard.dangerouslyPasteHTML(target.content);
+            }
 
             document.getElementById('editorTitle').textContent = '解答速報の編集';
             document.getElementById('examSection').style.display = 'none';
@@ -640,14 +717,15 @@
             let exams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
             exams = exams.filter(ex => ex.id !== id);
             localStorage.setItem('vector_exam_news', JSON.stringify(exams));
-            setDirty('exams', true);
+            if (typeof setDirty === 'function') setDirty('exams', true);
 
             const jsonStr = JSON.stringify(exams, null, 2);
 
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 try {
                     await pushToGitHub('data/exams.json', jsonStr, `Delete exam ${id} from exams.json`);
-                    setDirty('exams', false);
+                    if (typeof setDirty === 'function') setDirty('exams', false);
                     alert('解答速報を削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     renderExamTable();
                     showSyncNotice();
@@ -678,6 +756,11 @@
 
         // QuillエディタからクリーンにHTMLを取得する関数 (KaTeX重複レンダリング対策)
         function getCleanHTMLFromEditor(quillInstance) {
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                return textarea ? textarea.value : '';
+            }
+            if (!quillInstance) return '';
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = quillInstance.root.innerHTML;
             
@@ -910,12 +993,13 @@
             }
 
             localStorage.setItem('vector_exam_news', JSON.stringify(exams));
-            setDirty('exams', true);
+            if (typeof setDirty === 'function') setDirty('exams', true);
 
             const htmlContent = generateExamHTML(title, univName, year, today, content);
             const jsonStr = JSON.stringify(exams, null, 2);
 
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 const btn = e.target.querySelector('button[type="submit"]');
                 const origText = btn.textContent;
                 btn.textContent = '保存中...';
@@ -927,7 +1011,7 @@
                     // Commit JSON second
                     await pushToGitHub('data/exams.json', jsonStr, `Update exams.json list via Admin Panel`);
                     
-                    setDirty('exams', false);
+                    if (typeof setDirty === 'function') setDirty('exams', false);
                     alert('解答速報データを保存し、個別用HTMLとリスト用JSONの両方をGitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     
                     hideExamEditor();

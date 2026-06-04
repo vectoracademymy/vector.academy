@@ -221,21 +221,40 @@
         // 初期化
         // =============================================
         window.addEventListener('DOMContentLoaded', async () => {
-            await fetchRemoteFaq();
-            if (!localStorage.getItem(FAQ_KEY))     localStorage.setItem(FAQ_KEY,     JSON.stringify([]));
-            if (!localStorage.getItem(CONTACT_KEY)) localStorage.setItem(CONTACT_KEY, JSON.stringify([]));
+            try {
+                await fetchRemoteFaq();
+            } catch (e) {
+                console.error('fetchRemoteFaq failed:', e);
+            }
+            
+            try {
+                if (!localStorage.getItem(FAQ_KEY))     localStorage.setItem(FAQ_KEY,     JSON.stringify([]));
+                if (!localStorage.getItem(CONTACT_KEY)) localStorage.setItem(CONTACT_KEY, JSON.stringify([]));
+            } catch (e) {
+                console.error('localStorage init failed:', e);
+            }
 
-            initQuill();
-            renderFaqTable();
-            renderInquiryTable();
-            updateUnreadBadge();
+            try {
+                initQuill();
+            } catch (e) {
+                console.error('initQuill failed:', e);
+            }
+
+            try {
+                renderFaqTable();
+                renderInquiryTable();
+                updateUnreadBadge();
+            } catch (e) {
+                console.error('rendering tables failed:', e);
+            }
         });
 
         function showSyncNotice() {
             const banner = document.getElementById('syncNoticeBanner');
             if (!banner) return;
             
-            const dirty = isDirty('faq');
+            const hasSyncHelper = typeof isDirty === 'function';
+            const dirty = hasSyncHelper ? isDirty('faq') : false;
             if (dirty) {
                 banner.style.display = 'block';
                 banner.style.backgroundColor = '#fff2e6';
@@ -250,11 +269,13 @@
         async function forceSyncServer() {
             if (!confirm('本当にサーバーのデータで強制上書きしますか？ローカルの変更は失われます。')) return;
             try {
-                const response = await fetchWithCacheBusting('data/faq.json');
+                const response = typeof fetchWithCacheBusting === 'function'
+                    ? await fetchWithCacheBusting('data/faq.json')
+                    : await fetch('data/faq.json');
                 if (response.ok) {
                     const data = await response.json();
                     localStorage.setItem(FAQ_KEY, JSON.stringify(data));
-                    setDirty('faq', false);
+                    if (typeof setDirty === 'function') setDirty('faq', false);
                     renderFaqTable();
                     showSyncNotice();
                     alert('サーバーのデータで上書きしました。');
@@ -265,16 +286,19 @@
         }
 
         async function fetchRemoteFaq() {
-            if (isDirty('faq')) {
+            const hasSyncHelper = typeof isDirty === 'function';
+            if (hasSyncHelper && isDirty('faq')) {
                 setTimeout(showSyncNotice, 100);
                 return;
             }
             try {
-                const response = await fetchWithCacheBusting('data/faq.json');
+                const response = typeof fetchWithCacheBusting === 'function'
+                    ? await fetchWithCacheBusting('data/faq.json')
+                    : await fetch('data/faq.json');
                 if (response.ok) {
                     const data = await response.json();
                     localStorage.setItem(FAQ_KEY, JSON.stringify(data));
-                    setDirty('faq', false);
+                    if (typeof setDirty === 'function') setDirty('faq', false);
                 }
             } catch (e) {
                 console.warn('Could not fetch remote FAQ list. Using local storage.', e);
@@ -282,32 +306,70 @@
             setTimeout(showSyncNotice, 100);
         }
 
-        function initQuill() {
-            // BlotFormatterとそのアライメントフォーマットの登録
-            const BlotFormatter = QuillBlotFormatter2.default;
-            const { createImageAlignAttributor, createIframeAlignAttributor } = QuillBlotFormatter2;
-            Quill.register(createImageAlignAttributor(Quill), true);
-            Quill.register(createIframeAlignAttributor(Quill), true);
-            Quill.register('modules/blotFormatter2', BlotFormatter);
+        let isFallbackEditor = false;
 
-            const toolbarOptions = [
-                [{ 'font': [] }],
-                [{ 'size': ['small', false, 'large', 'huge'] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ 'color': [] }, { 'background': [] }],
-                [{ 'align': [] }],
-                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                ['link', 'image', 'formula'],
-                ['clean']
-            ];
-            quill = new Quill('#faqEditorContainer', {
-                modules: { 
-                    toolbar: toolbarOptions,
-                    blotFormatter2: {}
-                },
-                theme: 'snow',
-                placeholder: '回答を入力してください。画像の貼り付けや数式の挿入も可能です。'
-            });
+        function setupFallbackEditor() {
+            isFallbackEditor = true;
+            const container = document.getElementById('faqEditorContainer');
+            if (container) {
+                container.innerHTML = '<textarea id="fallback-editor" style="width: 100%; height: 300px; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px;" placeholder="HTML形式で本文を入力してください。"></textarea>';
+            }
+        }
+
+        function initQuill() {
+            try {
+                if (typeof Quill === 'undefined') {
+                    throw new Error('Quill is not loaded');
+                }
+
+                const quillModules = {
+                    toolbar: [
+                        [{ 'font': [] }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'align': [] }],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        ['link', 'image', 'formula'],
+                        ['clean']
+                    ]
+                };
+
+                // BlotFormatterとそのアライメントフォーマットの登録（安全に行う）
+                if (typeof QuillBlotFormatter2 !== 'undefined') {
+                    try {
+                        const BlotFormatter = QuillBlotFormatter2.default || QuillBlotFormatter2;
+                        
+                        if (typeof QuillBlotFormatter2.createImageAlignAttributor === 'function') {
+                            Quill.register(QuillBlotFormatter2.createImageAlignAttributor(Quill), true);
+                        } else if (BlotFormatter && typeof BlotFormatter.registerImageAlign === 'function') {
+                            BlotFormatter.registerImageAlign(Quill);
+                        }
+                        
+                        if (typeof QuillBlotFormatter2.createIframeAlignAttributor === 'function') {
+                            Quill.register(QuillBlotFormatter2.createIframeAlignAttributor(Quill), true);
+                        } else if (BlotFormatter && typeof BlotFormatter.registerIframeAlign === 'function') {
+                            BlotFormatter.registerIframeAlign(Quill);
+                        }
+                        
+                        Quill.register('modules/blotFormatter2', BlotFormatter);
+                        quillModules.blotFormatter2 = {};
+                    } catch (formatterError) {
+                        console.warn('Failed to register QuillBlotFormatter2:', formatterError);
+                    }
+                } else {
+                    console.warn('QuillBlotFormatter2 is not defined. Registering without image resizing.');
+                }
+
+                quill = new Quill('#faqEditorContainer', {
+                    modules: quillModules,
+                    theme: 'snow',
+                    placeholder: '回答を入力してください。画像の貼り付けや数式の挿入も可能です。'
+                });
+            } catch (e) {
+                console.error("Quill initialization failed, falling back to textarea:", e);
+                setupFallbackEditor();
+            }
         }
 
         // =============================================
@@ -351,7 +413,14 @@
             document.getElementById('editFaqId').value  = '';
             document.getElementById('faqQuestion').value = '';
             document.getElementById('faqTags').value    = '';
-            if (quill) quill.setContents([]);
+            
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                if (textarea) textarea.value = '';
+            } else if (quill) {
+                quill.setContents([]);
+            }
+            
             document.getElementById('faqEditorTitle').textContent = 'FAQの新規作成';
             document.getElementById('faqListView').style.display   = 'none';
             document.getElementById('faqEditorView').style.display = 'block';
@@ -371,7 +440,13 @@
             document.getElementById('editFaqId').value   = faq.id;
             document.getElementById('faqQuestion').value = faq.question;
             document.getElementById('faqTags').value     = (faq.tags || []).join(', ');
-            if (quill) quill.clipboard.dangerouslyPasteHTML(faq.answer || '');
+            
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                if (textarea) textarea.value = faq.answer || '';
+            } else if (quill) {
+                quill.clipboard.dangerouslyPasteHTML(faq.answer || '');
+            }
 
             document.getElementById('faqEditorTitle').textContent = 'FAQの編集';
             document.getElementById('faqListView').style.display   = 'none';
@@ -383,14 +458,15 @@
             let faqList = JSON.parse(localStorage.getItem(FAQ_KEY) || '[]');
             faqList = faqList.filter(f => f.id !== id);
             localStorage.setItem(FAQ_KEY, JSON.stringify(faqList));
-            setDirty('faq', true);
+            if (typeof setDirty === 'function') setDirty('faq', true);
 
             const jsonStr = JSON.stringify(faqList, null, 2);
 
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 try {
                     await pushToGitHub('data/faq.json', jsonStr, `Delete FAQ ${id} via Admin Panel`);
-                    setDirty('faq', false);
+                    if (typeof setDirty === 'function') setDirty('faq', false);
                     alert('FAQを削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     renderFaqTable();
                     showSyncNotice();
@@ -420,6 +496,11 @@
         }
 
         function getCleanHTML(quillInstance) {
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                return textarea ? textarea.value : '';
+            }
+            if (!quillInstance) return '';
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = quillInstance.root.innerHTML;
             tempDiv.querySelectorAll('.ql-formula').forEach(el => {
@@ -451,11 +532,12 @@
             }
 
             localStorage.setItem(FAQ_KEY, JSON.stringify(faqList));
-            setDirty('faq', true);
+            if (typeof setDirty === 'function') setDirty('faq', true);
 
             const jsonStr = JSON.stringify(faqList, null, 2);
 
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 const btn = event.target.querySelector('button[type="submit"]');
                 const origText = btn.textContent;
                 btn.textContent = '保存中...';
@@ -463,7 +545,7 @@
 
                 try {
                     await pushToGitHub('data/faq.json', jsonStr, `Update faq.json via Admin Panel (Save)`);
-                    setDirty('faq', false);
+                    if (typeof setDirty === 'function') setDirty('faq', false);
                     alert('FAQデータを保存し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     hideFaqEditor();
                     renderFaqTable();

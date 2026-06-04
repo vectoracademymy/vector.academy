@@ -162,17 +162,37 @@
 
         // 読み込み時に実行
         window.addEventListener('DOMContentLoaded', async () => {
-            await fetchRemoteNews();
-            initLocalStorage();
-            renderTable();
-            initQuill();
+            try {
+                await fetchRemoteNews();
+            } catch (e) {
+                console.error('fetchRemoteNews failed:', e);
+            }
+            
+            try {
+                initLocalStorage();
+            } catch (e) {
+                console.error('initLocalStorage failed:', e);
+            }
+            
+            try {
+                renderTable();
+            } catch (e) {
+                console.error('renderTable failed:', e);
+            }
+            
+            try {
+                initQuill();
+            } catch (e) {
+                console.error('initQuill failed:', e);
+            }
         });
 
         function showSyncNotice() {
             const banner = document.getElementById('syncNoticeBanner');
             if (!banner) return;
             
-            const dirty = isDirty('news');
+            const hasSyncHelper = typeof isDirty === 'function';
+            const dirty = hasSyncHelper ? isDirty('news') : false;
             if (dirty) {
                 banner.style.display = 'block';
                 banner.style.backgroundColor = '#fff2e6';
@@ -187,11 +207,13 @@
         async function forceSyncServer() {
             if (!confirm('本当にサーバーのデータで強制上書きしますか？ローカルの変更は失われます。')) return;
             try {
-                const response = await fetchWithCacheBusting('data/news.json');
+                const response = typeof fetchWithCacheBusting === 'function'
+                    ? await fetchWithCacheBusting('data/news.json')
+                    : await fetch('data/news.json');
                 if (response.ok) {
                     const remoteList = await response.json();
                     localStorage.setItem('vector_news', JSON.stringify(remoteList));
-                    setDirty('news', false);
+                    if (typeof setDirty === 'function') setDirty('news', false);
                     renderTable();
                     showSyncNotice();
                     alert('サーバーのデータで上書きしました。');
@@ -203,17 +225,20 @@
 
         // リモートのデータを取得してローカルに同期
         async function fetchRemoteNews() {
-            if (isDirty('news')) {
+            const hasSyncHelper = typeof isDirty === 'function';
+            if (hasSyncHelper && isDirty('news')) {
                 // Keep local changes
                 setTimeout(showSyncNotice, 100);
                 return;
             }
             try {
-                const response = await fetchWithCacheBusting('data/news.json');
+                const response = typeof fetchWithCacheBusting === 'function'
+                    ? await fetchWithCacheBusting('data/news.json')
+                    : await fetch('data/news.json');
                 if (response.ok) {
                     const remoteList = await response.json();
                     localStorage.setItem('vector_news', JSON.stringify(remoteList));
-                    setDirty('news', false);
+                    if (typeof setDirty === 'function') setDirty('news', false);
                 }
             } catch (e) {
                 console.warn('Could not fetch remote news list. Using local storage.', e);
@@ -228,35 +253,71 @@
             }
         }
 
+        let isFallbackEditor = false;
+
+        function setupFallbackEditor() {
+            isFallbackEditor = true;
+            const container = document.getElementById('editor-container');
+            if (container) {
+                container.innerHTML = '<textarea id="fallback-editor" style="width: 100%; height: 300px; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px;" placeholder="HTML形式で本文を入力してください。"></textarea>';
+            }
+        }
+
         // Quillエディタの初期化
         function initQuill() {
-            // BlotFormatterとそのアライメントフォーマットの登録
-            const BlotFormatter = QuillBlotFormatter2.default;
-            const { createImageAlignAttributor, createIframeAlignAttributor } = QuillBlotFormatter2;
-            Quill.register(createImageAlignAttributor(Quill), true);
-            Quill.register(createIframeAlignAttributor(Quill), true);
-            Quill.register('modules/blotFormatter2', BlotFormatter);
+            try {
+                if (typeof Quill === 'undefined') {
+                    throw new Error('Quill is not loaded');
+                }
 
-            // Quillツールバーの設定
-            const toolbarOptions = [
-                [{ 'font': [] }],
-                [{ 'size': ['small', false, 'large', 'huge'] }],
-                ['bold', 'italic', 'underline', 'strike'],        // 装飾
-                [{ 'color': [] }, { 'background': [] }],          // 色設定
-                [{ 'align': [] }],                                // 文字寄せ
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],     // 箇条書き
-                ['link', 'image', 'formula'],                     // リンク、画像、数式
-                ['clean']                                         // 書式クリア
-            ];
+                const quillModules = {
+                    toolbar: [
+                        [{ 'font': [] }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }],
+                        ['bold', 'italic', 'underline', 'strike'],        // 装飾
+                        [{ 'color': [] }, { 'background': [] }],          // 色設定
+                        [{ 'align': [] }],                                // 文字寄せ
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],     // 箇条書き
+                        ['link', 'image', 'formula'],                     // リンク、画像、数式
+                        ['clean']                                         // 書式クリア
+                    ]
+                };
 
-            quill = new Quill('#editor-container', {
-                modules: {
-                    toolbar: toolbarOptions,
-                    blotFormatter2: {}
-                },
-                theme: 'snow',
-                placeholder: 'ここに本文を入力してください。画像は直接貼り付け（コピペ・ドラッグ＆ドロップ）可能です。数式は「f(x)」ボタンからTeX記法で入力できます。'
-            });
+                // BlotFormatterとそのアライメントフォーマットの登録（安全に行う）
+                if (typeof QuillBlotFormatter2 !== 'undefined') {
+                    try {
+                        const BlotFormatter = QuillBlotFormatter2.default || QuillBlotFormatter2;
+                        
+                        if (typeof QuillBlotFormatter2.createImageAlignAttributor === 'function') {
+                            Quill.register(QuillBlotFormatter2.createImageAlignAttributor(Quill), true);
+                        } else if (BlotFormatter && typeof BlotFormatter.registerImageAlign === 'function') {
+                            BlotFormatter.registerImageAlign(Quill);
+                        }
+                        
+                        if (typeof QuillBlotFormatter2.createIframeAlignAttributor === 'function') {
+                            Quill.register(QuillBlotFormatter2.createIframeAlignAttributor(Quill), true);
+                        } else if (BlotFormatter && typeof BlotFormatter.registerIframeAlign === 'function') {
+                            BlotFormatter.registerIframeAlign(Quill);
+                        }
+                        
+                        Quill.register('modules/blotFormatter2', BlotFormatter);
+                        quillModules.blotFormatter2 = {};
+                    } catch (formatterError) {
+                        console.warn('Failed to register QuillBlotFormatter2:', formatterError);
+                    }
+                } else {
+                    console.warn('QuillBlotFormatter2 is not defined. Registering without image resizing.');
+                }
+
+                quill = new Quill('#editor-container', {
+                    modules: quillModules,
+                    theme: 'snow',
+                    placeholder: 'ここに本文を入力してください。画像は直接貼り付け（コピペ・ドラッグ＆ドロップ）可能です。数式は「f(x)」ボタンからTeX記法で入力できます。'
+                });
+            } catch (e) {
+                console.error("Quill initialization failed, falling back to textarea:", e);
+                setupFallbackEditor();
+            }
         }
 
         // 一覧テーブルを描画
@@ -304,7 +365,13 @@
             document.getElementById('editNewsId').value = '';
             document.getElementById('newsTitle').value = '';
             document.getElementById('newsCategory').value = 'お知らせ';
-            quill.setContents([]);
+            
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                if (textarea) textarea.value = '';
+            } else if (quill) {
+                quill.setContents([]);
+            }
             
             document.getElementById('editorTitle').textContent = 'お知らせの新規作成';
             document.getElementById('listView').style.display = 'none';
@@ -337,8 +404,13 @@
             document.getElementById('newsTitle').value = target.title;
             document.getElementById('newsCategory').value = target.category || 'お知らせ';
             
-            // HTMLコンテンツをQuillにロード
-            quill.clipboard.dangerouslyPasteHTML(target.content);
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                if (textarea) textarea.value = target.content;
+            } else if (quill) {
+                // HTMLコンテンツをQuillにロード
+                quill.clipboard.dangerouslyPasteHTML(target.content);
+            }
 
             document.getElementById('editorTitle').textContent = 'お知らせの編集';
             document.getElementById('listView').style.display = 'none';
@@ -352,14 +424,15 @@
             let newsList = JSON.parse(localStorage.getItem('vector_news') || '[]');
             newsList = newsList.filter(n => n.id !== id);
             localStorage.setItem('vector_news', JSON.stringify(newsList));
-            setDirty('news', true);
+            if (typeof setDirty === 'function') setDirty('news', true);
 
             const jsonStr = JSON.stringify(newsList, null, 2);
 
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 try {
                     await pushToGitHub('data/news.json', jsonStr, `Update news.json via Admin Panel (Delete)`);
-                    setDirty('news', false);
+                    if (typeof setDirty === 'function') setDirty('news', false);
                     alert('お知らせを削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     renderTable();
                     showSyncNotice();
@@ -398,6 +471,11 @@
 
         // HTMLをエディタからクリーンに取得する関数（Quill 2.0のformulaバグ対策）
         function getCleanHTMLFromEditor(quillInstance) {
+            if (isFallbackEditor) {
+                const textarea = document.getElementById('fallback-editor');
+                return textarea ? textarea.value : '';
+            }
+            if (!quillInstance) return '';
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = quillInstance.root.innerHTML;
             
@@ -457,12 +535,13 @@
             }
 
             localStorage.setItem('vector_news', JSON.stringify(newsList));
-            setDirty('news', true);
+            if (typeof setDirty === 'function') setDirty('news', true);
 
             const jsonStr = JSON.stringify(newsList, null, 2);
 
             // Check if GitHub Integration is enabled
-            if (isGitHubIntegrated()) {
+            const canAutoSync = typeof isGitHubIntegrated === 'function' && isGitHubIntegrated();
+            if (canAutoSync) {
                 const submitBtn = event.target.querySelector('button[type="submit"]');
                 const origText = submitBtn.textContent;
                 submitBtn.textContent = '保存中...';
@@ -470,7 +549,7 @@
 
                 try {
                     await pushToGitHub('data/news.json', jsonStr, `Update news.json via Admin Panel (Save)`);
-                    setDirty('news', false);
+                    if (typeof setDirty === 'function') setDirty('news', false);
                     alert('お知らせデータを保存し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
                     hideEditor();
                     renderTable();
