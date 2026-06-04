@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="CSS/sample.css">
+    <script src="js/github-sync.js"></script>
     <script>
         // セッションが有効でない場合はログインページへ強制リダイレクト（ルートガード）
         if (sessionStorage.getItem('admin_auth') !== 'true') {
@@ -90,9 +91,297 @@
             </a>
 
         </div>
+        </div>
+
+        <!-- データベース同期・GitHub連携セクション -->
+        <div class="admin-sync-section" style="margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; align-items: start; flex-wrap: wrap;">
+            
+            <!-- GitHub連携設定 -->
+            <div class="dashboard-sync-card" style="background: white; padding: 25px; border-radius: 12px; border: 1px solid #eef7f6; box-shadow: 0 4px 15px rgba(73, 207, 196, 0.03);">
+                <h3 style="color: #1a6861; font-size: 18px; margin-top: 0; margin-bottom: 16px; border-bottom: 2px solid #eef7f6; padding-bottom: 8px;">⚙️ GitHub自動同期連携（推奨）</h3>
+                <p style="font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.6;">
+                    GitHubの接続設定を行うと、変更を保存した際に自動的にリポジトリへコミット・プッシュされ、数分で他端末や一般閲覧者へ反映されます。手動のファイル操作が不要になります。
+                </p>
+                <form id="githubSettingsForm" onsubmit="saveSettings(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; gap: 15px;">
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555;">所有者 (Owner)</label>
+                            <input type="text" id="ghOwner" class="editor-title-input" style="padding: 8px 12px; font-size: 13px;" required placeholder="例: vectoracademymy">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555;">リポジトリ名 (Repo)</label>
+                            <input type="text" id="ghRepo" class="editor-title-input" style="padding: 8px 12px; font-size: 13px;" required placeholder="例: vector.academy">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555;">対象ブランチ</label>
+                            <input type="text" id="ghBranch" class="editor-title-input" style="padding: 8px 12px; font-size: 13px;" required value="main">
+                        </div>
+                        <div style="flex: 2;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555;">個人アクセストークン (PAT)</label>
+                            <input type="password" id="ghToken" class="editor-title-input" style="padding: 8px 12px; font-size: 13px;" required placeholder="ghp_xxxxxxxxxxxx">
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <a href="https://github.com/settings/tokens" target="_blank" style="font-size: 12px; color: #2b9d94; text-decoration: underline;">トークンの生成方法 &rarr;</a>
+                        <button type="submit" class="btn-primary" style="padding: 8px 20px; font-size: 13px; height: auto;">設定を保存</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- データベース管理 -->
+            <div class="dashboard-sync-card" style="background: white; padding: 25px; border-radius: 12px; border: 1px solid #eef7f6; box-shadow: 0 4px 15px rgba(73, 207, 196, 0.03);">
+                <h3 style="color: #1a6861; font-size: 18px; margin-top: 0; margin-bottom: 16px; border-bottom: 2px solid #eef7f6; padding-bottom: 8px;">💾 データベース同期・手動バックアップ</h3>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px; line-height: 1.6;">
+                    各データの同期状態と手動でのファイル同期（インポート・エクスポート）を管理します。
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- お知らせ -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #f0fbf9; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <span style="font-size: 14px; font-weight: 700; color: #333;">📢 お知らせ (news.json)</span>
+                            <span id="newsStatus" class="status-badge" style="margin-left: 8px;">確認中...</span>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="syncDbToGitHub('news', 'data/news.json', 'vector_news')" class="btn-github-sync action-badge badge-edit" style="border: none; cursor: pointer;">GitHub同期</button>
+                            <button onclick="downloadDb('vector_news', 'news.json', 'news')" class="action-badge badge-view" style="border: none; cursor: pointer;">DL</button>
+                            <button onclick="triggerUpload('news')" class="action-badge badge-delete" style="border: none; cursor: pointer; background: #eaeaea; color: #333;">UL</button>
+                            <button onclick="forceReloadServer('news', 'data/news.json', 'vector_news')" class="action-badge" style="border: none; cursor: pointer; background: #fff0f0; color: #dc3545;">再読込</button>
+                        </div>
+                    </div>
+                    <!-- 解答速報 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #f0fbf9; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <span style="font-size: 14px; font-weight: 700; color: #333;">📝 解答速報 (exams.json)</span>
+                            <span id="examsStatus" class="status-badge" style="margin-left: 8px;">確認中...</span>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="syncDbToGitHub('exams', 'data/exams.json', 'vector_exam_news')" class="btn-github-sync action-badge badge-edit" style="border: none; cursor: pointer;">GitHub同期</button>
+                            <button onclick="downloadDb('vector_exam_news', 'exams.json', 'exams')" class="action-badge badge-view" style="border: none; cursor: pointer;">DL</button>
+                            <button onclick="triggerUpload('exams')" class="action-badge badge-delete" style="border: none; cursor: pointer; background: #eaeaea; color: #333;">UL</button>
+                            <button onclick="forceReloadServer('exams', 'data/exams.json', 'vector_exam_news')" class="action-badge" style="border: none; cursor: pointer; background: #fff0f0; color: #dc3545;">再読込</button>
+                        </div>
+                    </div>
+                    <!-- 大学 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #f0fbf9; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <span style="font-size: 14px; font-weight: 700; color: #333;">🏫 大学リスト (universities.json)</span>
+                            <span id="universitiesStatus" class="status-badge" style="margin-left: 8px;">確認中...</span>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="syncDbToGitHub('universities', 'data/universities.json', 'vector_universities')" class="btn-github-sync action-badge badge-edit" style="border: none; cursor: pointer;">GitHub同期</button>
+                            <button onclick="downloadDb('vector_universities', 'universities.json', 'universities')" class="action-badge badge-view" style="border: none; cursor: pointer;">DL</button>
+                            <button onclick="triggerUpload('universities')" class="action-badge badge-delete" style="border: none; cursor: pointer; background: #eaeaea; color: #333;">UL</button>
+                            <button onclick="forceReloadServer('universities', 'data/universities.json', 'vector_universities')" class="action-badge" style="border: none; cursor: pointer; background: #fff0f0; color: #dc3545;">再読込</button>
+                        </div>
+                    </div>
+                    <!-- FAQ -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <span style="font-size: 14px; font-weight: 700; color: #333;">❓ よくある質問 (faq.json)</span>
+                            <span id="faqStatus" class="status-badge" style="margin-left: 8px;">確認中...</span>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="syncDbToGitHub('faq', 'data/faq.json', 'vector_faq')" class="btn-github-sync action-badge badge-edit" style="border: none; cursor: pointer;">GitHub同期</button>
+                            <button onclick="downloadDb('vector_faq', 'faq.json', 'faq')" class="action-badge badge-view" style="border: none; cursor: pointer;">DL</button>
+                            <button onclick="triggerUpload('faq')" class="action-badge badge-delete" style="border: none; cursor: pointer; background: #eaeaea; color: #333;">UL</button>
+                            <button onclick="forceReloadServer('faq', 'data/faq.json', 'vector_faq')" class="action-badge" style="border: none; cursor: pointer; background: #fff0f0; color: #dc3545;">再読込</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        <!-- 隠しファイルインプット -->
+        <input type="file" id="dbFileInput" style="display: none;" onchange="handleUpload(event)">
     </main>
 
     <script>
+        let activeUploadType = '';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadGitHubSettingsUI();
+            updateStatusBadges();
+            toggleSyncButtonsState();
+        });
+
+        function loadGitHubSettingsUI() {
+            const s = getGitHubSettings();
+            document.getElementById('ghOwner').value = s.owner || '';
+            document.getElementById('ghRepo').value = s.repo || '';
+            document.getElementById('ghBranch').value = s.branch || 'main';
+            document.getElementById('ghToken').value = s.token || '';
+        }
+
+        function saveSettings(e) {
+            e.preventDefault();
+            const owner = document.getElementById('ghOwner').value.trim();
+            const repo = document.getElementById('ghRepo').value.trim();
+            const branch = document.getElementById('ghBranch').value.trim();
+            const token = document.getElementById('ghToken').value.trim();
+
+            saveGitHubSettings({ owner, repo, branch, token });
+            alert('GitHub連携設定を保存しました。');
+            toggleSyncButtonsState();
+        }
+
+        function toggleSyncButtonsState() {
+            const isIntegrated = isGitHubIntegrated();
+            const syncButtons = document.querySelectorAll('.btn-github-sync');
+            syncButtons.forEach(btn => {
+                if (isIntegrated) {
+                    btn.removeAttribute('disabled');
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                } else {
+                    btn.setAttribute('disabled', 'true');
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                }
+            });
+        }
+
+        function updateStatusBadges() {
+            const types = ['news', 'exams', 'universities', 'faq'];
+            types.forEach(type => {
+                const badge = document.getElementById(`${type}Status`);
+                if (!badge) return;
+                
+                const dirty = isDirty(type);
+                if (dirty) {
+                    badge.textContent = '未保存の変更あり';
+                    badge.style.backgroundColor = '#fff2e6';
+                    badge.style.color = '#ff8000';
+                    badge.style.padding = '2px 8px';
+                    badge.style.borderRadius = '4px';
+                    badge.style.fontSize = '11px';
+                    badge.style.fontWeight = '700';
+                } else {
+                    badge.textContent = '同期済み';
+                    badge.style.backgroundColor = '#e8f9f7';
+                    badge.style.color = '#2b9d94';
+                    badge.style.padding = '2px 8px';
+                    badge.style.borderRadius = '4px';
+                    badge.style.fontSize = '11px';
+                    badge.style.fontWeight = '700';
+                }
+            });
+        }
+
+        // Manual backup download
+        function downloadDb(storageKey, fileName, type) {
+            const data = localStorage.getItem(storageKey);
+            if (!data) {
+                alert('データが存在しません。');
+                return;
+            }
+            const blob = new Blob([data], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean dirty flag upon downloading
+            setDirty(type, false);
+            updateStatusBadges();
+        }
+
+        // Manual backup upload
+        function triggerUpload(type) {
+            activeUploadType = type;
+            document.getElementById('dbFileInput').click();
+        }
+
+        function handleUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    let storageKey = '';
+                    if (activeUploadType === 'news') storageKey = 'vector_news';
+                    else if (activeUploadType === 'exams') storageKey = 'vector_exam_news';
+                    else if (activeUploadType === 'universities') storageKey = 'vector_universities';
+                    else if (activeUploadType === 'faq') storageKey = 'vector_faq';
+                    
+                    if (storageKey) {
+                        localStorage.setItem(storageKey, JSON.stringify(json));
+                        setDirty(activeUploadType, true); // Mark as dirty since it's imported locally but not pushed
+                        updateStatusBadges();
+                        alert('データをローカルにインポートしました。「未保存の変更あり」になります。変更をGitHubに同期するか、ダウンロードして再度アップロードしてください。');
+                    }
+                } catch (err) {
+                    alert('ファイルの解析に失敗しました。正しいJSONファイルを選択してください。');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset file input
+        }
+
+        // Sync to GitHub manually
+        async function syncDbToGitHub(type, path, storageKey) {
+            if (!isGitHubIntegrated()) {
+                alert('GitHub連携設定を行ってください。');
+                return;
+            }
+
+            const data = localStorage.getItem(storageKey);
+            if (!data) {
+                alert('同期するデータがありません。');
+                return;
+            }
+
+            const btn = event.currentTarget;
+            const originalText = btn.textContent;
+            btn.textContent = '同期中...';
+            btn.disabled = true;
+
+            try {
+                await pushToGitHub(path, data, `Update ${path} from admin dashboard`);
+                setDirty(type, false);
+                updateStatusBadges();
+                alert(`${path} のGitHubへの同期が完了しました！反映されるまで1〜2分お待ちください。`);
+            } catch (err) {
+                console.error(err);
+                alert('GitHub同期に失敗しました: ' + err.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Force reload from server
+        async function forceReloadServer(type, path, storageKey) {
+            if (!confirm('本当にサーバーのデータで上書きしますか？ローカルの未保存の変更は失われます。')) {
+                return;
+            }
+
+            const btn = event.currentTarget;
+            const originalText = btn.textContent;
+            btn.textContent = '読込中...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetchWithCacheBusting(path);
+                const data = await res.json();
+                localStorage.setItem(storageKey, JSON.stringify(data));
+                setDirty(type, false);
+                updateStatusBadges();
+                alert('サーバーのデータと正常に同期しました。');
+            } catch (err) {
+                console.error(err);
+                alert('サーバーからの読み込みに失敗しました: ' + err.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
         // ログアウト処理
         function logout() {
             sessionStorage.removeItem('admin_auth');
