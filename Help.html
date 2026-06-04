@@ -169,7 +169,16 @@
         // =============================================
         // FAQデータ管理・読み込み
         // =============================================
-        function initFaqData() {
+        async function loadFaqData() {
+            try {
+                const response = await fetch('data/faq.json?t=' + new Date().getTime(), { cache: 'no-store' });
+                if (response.ok) {
+                    const faqList = await response.json();
+                    localStorage.setItem(FAQ_KEY, JSON.stringify(faqList));
+                }
+            } catch (e) {
+                console.warn('Could not fetch remote FAQ list. Using local cache.', e);
+            }
             if (!localStorage.getItem(FAQ_KEY)) {
                 localStorage.setItem(FAQ_KEY, JSON.stringify(DEFAULT_FAQ));
             }
@@ -372,8 +381,8 @@
         // =============================================
         // 初期化
         // =============================================
-        window.addEventListener('DOMContentLoaded', () => {
-            initFaqData();
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadFaqData();
             const faqList = getFaqList();
             renderFaqTagFilters(faqList);
             renderFaqList(faqList);

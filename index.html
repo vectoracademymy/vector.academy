@@ -176,9 +176,9 @@
             }
         ];
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             initLocalStorage();
-            loadHomeNews();
+            await loadHomeNews();
         });
 
         // localStorage 初期化
@@ -189,7 +189,16 @@
         }
 
         // 最新3件のお知らせを取得・表示
-        function loadHomeNews() {
+        async function loadHomeNews() {
+            try {
+                const response = await fetch('data/news.json?t=' + new Date().getTime(), { cache: 'no-store' });
+                if (response.ok) {
+                    const newsList = await response.json();
+                    localStorage.setItem('vector_news', JSON.stringify(newsList));
+                }
+            } catch (e) {
+                console.warn('Could not fetch remote news list. Using local cache.', e);
+            }
             const newsList = JSON.parse(localStorage.getItem('vector_news') || '[]');
             const container = document.getElementById('homeNewsContainer');
             container.innerHTML = '';

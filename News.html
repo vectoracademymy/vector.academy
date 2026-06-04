@@ -135,9 +135,9 @@
 
         let allNews = [];
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             initLocalStorage();
-            loadNews();
+            await loadNews();
             renderNewsList(allNews);
 
             // URLクエリパラメータの解析 (?id=XXX の自動展開)
@@ -156,7 +156,16 @@
         }
 
         // ニュースの読み込み
-        function loadNews() {
+        async function loadNews() {
+            try {
+                const response = await fetch('data/news.json?t=' + new Date().getTime(), { cache: 'no-store' });
+                if (response.ok) {
+                    const newsList = await response.json();
+                    localStorage.setItem('vector_news', JSON.stringify(newsList));
+                }
+            } catch (e) {
+                console.warn('Could not fetch remote news list. Using local cache.', e);
+            }
             allNews = JSON.parse(localStorage.getItem('vector_news') || '[]');
             // 新しい順に並び替え
             allNews.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));

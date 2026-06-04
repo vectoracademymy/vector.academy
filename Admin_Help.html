@@ -20,6 +20,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="CSS/sample.css">
+    <script src="js/github-sync.js"></script>
 
     <!-- セッションガード -->
     <script>
@@ -73,6 +74,9 @@
             </div>
             <a href="Admin_Dashboard.html" class="btn-secondary">← ダッシュボードへ戻る</a>
         </div>
+
+        <!-- 同期アラートバナー -->
+        <div id="syncNoticeBanner" style="display: none; padding: 12px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid #ffe5cc;"></div>
 
         <!-- タブ切り替え -->
         <div class="admin-sub-tabs">
@@ -216,7 +220,8 @@
         // =============================================
         // 初期化
         // =============================================
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchRemoteFaq();
             if (!localStorage.getItem(FAQ_KEY))     localStorage.setItem(FAQ_KEY,     JSON.stringify([]));
             if (!localStorage.getItem(CONTACT_KEY)) localStorage.setItem(CONTACT_KEY, JSON.stringify([]));
 
@@ -225,6 +230,57 @@
             renderInquiryTable();
             updateUnreadBadge();
         });
+
+        function showSyncNotice() {
+            const banner = document.getElementById('syncNoticeBanner');
+            if (!banner) return;
+            
+            const dirty = isDirty('faq');
+            if (dirty) {
+                banner.style.display = 'block';
+                banner.style.backgroundColor = '#fff2e6';
+                banner.style.color = '#ff8000';
+                banner.style.borderColor = '#ffe5cc';
+                banner.innerHTML = '⚠️ <strong>未保存のローカル変更があります。</strong>GitHubにまだ反映されていないか、ビルド待ちです。<button onclick="forceSyncServer()" style="margin-left: 15px; padding: 2px 8px; font-size: 11px; background: #ff8000; color: white; border: none; border-radius: 4px; cursor: pointer;">サーバーデータで強制上書き</button>';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        async function forceSyncServer() {
+            if (!confirm('本当にサーバーのデータで強制上書きしますか？ローカルの変更は失われます。')) return;
+            try {
+                const response = await fetchWithCacheBusting('data/faq.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem(FAQ_KEY, JSON.stringify(data));
+                    setDirty('faq', false);
+                    renderFaqTable();
+                    showSyncNotice();
+                    alert('サーバーのデータで上書きしました。');
+                }
+            } catch (e) {
+                alert('サーバーからの読み込みに失敗しました。');
+            }
+        }
+
+        async function fetchRemoteFaq() {
+            if (isDirty('faq')) {
+                setTimeout(showSyncNotice, 100);
+                return;
+            }
+            try {
+                const response = await fetchWithCacheBusting('data/faq.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem(FAQ_KEY, JSON.stringify(data));
+                    setDirty('faq', false);
+                }
+            } catch (e) {
+                console.warn('Could not fetch remote FAQ list. Using local storage.', e);
+            }
+            setTimeout(showSyncNotice, 100);
+        }
 
         function initQuill() {
             // BlotFormatterとそのアライメントフォーマットの登録
@@ -322,12 +378,45 @@
             document.getElementById('faqEditorView').style.display = 'block';
         }
 
-        function deleteFaq(id) {
+        async function deleteFaq(id) {
             if (!confirm('このFAQを削除しますか？')) return;
             let faqList = JSON.parse(localStorage.getItem(FAQ_KEY) || '[]');
             faqList = faqList.filter(f => f.id !== id);
             localStorage.setItem(FAQ_KEY, JSON.stringify(faqList));
+            setDirty('faq', true);
+
+            const jsonStr = JSON.stringify(faqList, null, 2);
+
+            if (isGitHubIntegrated()) {
+                try {
+                    await pushToGitHub('data/faq.json', jsonStr, `Delete FAQ ${id} via Admin Panel`);
+                    setDirty('faq', false);
+                    alert('FAQを削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    renderFaqTable();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりに「faq.json」ファイルをダウンロードします。');
+                    triggerManualFaqDeleteDownload(jsonStr);
+                }
+            } else {
+                triggerManualFaqDeleteDownload(jsonStr);
+            }
+        }
+
+        function triggerManualFaqDeleteDownload(jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'faq.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('FAQを削除し、更新された「faq.json」をダウンロードしました。プロジェクトの「data/」フォルダに配置してGitHubにアップロードしてください。');
+
             renderFaqTable();
+            showSyncNotice();
         }
 
         function getCleanHTML(quillInstance) {
@@ -343,7 +432,7 @@
             return tempDiv.innerHTML;
         }
 
-        function saveFaq(event) {
+        async function saveFaq(event) {
             event.preventDefault();
             const id       = document.getElementById('editFaqId').value;
             const question = document.getElementById('faqQuestion').value.trim();
@@ -362,8 +451,50 @@
             }
 
             localStorage.setItem(FAQ_KEY, JSON.stringify(faqList));
+            setDirty('faq', true);
+
+            const jsonStr = JSON.stringify(faqList, null, 2);
+
+            if (isGitHubIntegrated()) {
+                const btn = event.target.querySelector('button[type="submit"]');
+                const origText = btn.textContent;
+                btn.textContent = '保存中...';
+                btn.disabled = true;
+
+                try {
+                    await pushToGitHub('data/faq.json', jsonStr, `Update faq.json via Admin Panel (Save)`);
+                    setDirty('faq', false);
+                    alert('FAQデータを保存し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    hideFaqEditor();
+                    renderFaqTable();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりにファイルをダウンロードします。手動でアップロードしてください。');
+                    triggerManualFaqDownload(jsonStr);
+                } finally {
+                    btn.textContent = origText;
+                    btn.disabled = false;
+                }
+            } else {
+                triggerManualFaqDownload(jsonStr);
+            }
+        }
+
+        function triggerManualFaqDownload(jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'faq.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('FAQデータを保存し、更新された「faq.json」をダウンロードしました。プロジェクトの「data/」フォルダに配置してGitHubにアップロードしてください。');
+            
             hideFaqEditor();
             renderFaqTable();
+            showSyncNotice();
         }
 
         // =============================================

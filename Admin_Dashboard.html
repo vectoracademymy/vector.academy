@@ -98,7 +98,10 @@
             
             <!-- GitHub連携設定 -->
             <div class="dashboard-sync-card" style="background: white; padding: 25px; border-radius: 12px; border: 1px solid #eef7f6; box-shadow: 0 4px 15px rgba(73, 207, 196, 0.03);">
-                <h3 style="color: #1a6861; font-size: 18px; margin-top: 0; margin-bottom: 16px; border-bottom: 2px solid #eef7f6; padding-bottom: 8px;">⚙️ GitHub自動同期連携（推奨）</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eef7f6; padding-bottom: 8px; margin-bottom: 16px;">
+                    <h3 style="color: #1a6861; font-size: 18px; margin: 0;">⚙️ GitHub自動同期連携（推奨）</h3>
+                    <span id="ghIntegrationStatus" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 700; background-color: #f0f0f0; color: #888;">判定中...</span>
+                </div>
                 <p style="font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.6;">
                     GitHubの接続設定を行うと、変更を保存した際に自動的にリポジトリへコミット・プッシュされ、数分で他端末や一般閲覧者へ反映されます。手動のファイル操作が不要になります。
                 </p>
@@ -123,9 +126,12 @@
                             <input type="password" id="ghToken" class="editor-title-input" style="padding: 8px 12px; font-size: 13px;" required placeholder="ghp_xxxxxxxxxxxx">
                         </div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px;">
                         <a href="https://github.com/settings/tokens" target="_blank" style="font-size: 12px; color: #2b9d94; text-decoration: underline;">トークンの生成方法 &rarr;</a>
-                        <button type="submit" class="btn-primary" style="padding: 8px 20px; font-size: 13px; height: auto;">設定を保存</button>
+                        <div>
+                            <button type="button" id="ghTestBtn" onclick="testGitHubConnection()" class="btn-secondary" style="padding: 8px 15px; font-size: 13px; height: auto; margin-right: 8px; border: 1px solid #49cfc4; color: #1a6861; background: transparent; cursor: pointer;">接続テスト</button>
+                            <button type="submit" class="btn-primary" style="padding: 8px 20px; font-size: 13px; height: auto; cursor: pointer;">設定を保存</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -240,6 +246,76 @@
                     btn.style.cursor = 'not-allowed';
                 }
             });
+
+            // 連携ステータスバッジの更新
+            const statusBadge = document.getElementById('ghIntegrationStatus');
+            if (statusBadge) {
+                if (isIntegrated) {
+                    statusBadge.textContent = '連携済み (有効)';
+                    statusBadge.style.backgroundColor = '#e8f9f7';
+                    statusBadge.style.color = '#2b9d94';
+                } else {
+                    statusBadge.textContent = '未連携 (無効)';
+                    statusBadge.style.backgroundColor = '#f0f0f0';
+                    statusBadge.style.color = '#888';
+                }
+            }
+        }
+
+        async function testGitHubConnection() {
+            const owner = document.getElementById('ghOwner').value.trim();
+            const repo = document.getElementById('ghRepo').value.trim();
+            const branch = document.getElementById('ghBranch').value.trim();
+            const token = document.getElementById('ghToken').value.trim();
+
+            if (!owner || !repo || !token) {
+                alert('所有者、リポジトリ名、およびアクセストークンを入力してからテストを実行してください。');
+                return;
+            }
+
+            const btn = document.getElementById('ghTestBtn');
+            const origText = btn.textContent;
+            btn.textContent = 'テスト中...';
+            btn.disabled = true;
+
+            try {
+                const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
+                const res = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                if (res.ok) {
+                    const branchUrl = `${apiUrl}/branches/${branch}`;
+                    const branchRes = await fetch(branchUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Cache-Control': 'no-cache'
+                        }
+                    });
+
+                    if (branchRes.ok) {
+                        alert('✅ 接続テストに成功しました！\nリポジトリおよびブランチ「' + branch + '」との通信に成功しました。自動同期を利用可能です。');
+                    } else {
+                        alert('⚠️ リポジトリは確認できましたが、ブランチ「' + branch + '」が見つかりません。ブランチ名が正しいかご確認ください。');
+                    }
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    const errMsg = errData.message || '接続に失敗しました。';
+                    alert('❌ 接続テストに失敗しました。\n所有者、リポジトリ名、またはアクセストークンが間違っている可能性があります。\nエラーメッセージ: ' + errMsg);
+                }
+            } catch (err) {
+                alert('❌ 通信エラーが発生しました: ' + err.message);
+            } finally {
+                btn.textContent = origText;
+                btn.disabled = false;
+            }
         }
 
         function updateStatusBadges() {

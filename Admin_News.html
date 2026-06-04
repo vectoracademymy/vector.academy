@@ -20,6 +20,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="CSS/sample.css">
+    <script src="js/github-sync.js"></script>
     
     <script>
         // セッションガード
@@ -75,6 +76,9 @@
 
         <!-- 一覧・管理画面 -->
         <div class="admin-news-container" id="listView">
+            <!-- 同期アラートバナー -->
+            <div id="syncNoticeBanner" style="display: none; padding: 12px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid #ffe5cc;"></div>
+            
             <div class="admin-news-header">
                 <h2>登録済みのお知らせ一覧</h2>
                 <button class="btn-primary" onclick="showEditor()">＋ 新規お知らせ作成</button>
@@ -157,11 +161,65 @@
         ];
 
         // 読み込み時に実行
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchRemoteNews();
             initLocalStorage();
             renderTable();
             initQuill();
         });
+
+        function showSyncNotice() {
+            const banner = document.getElementById('syncNoticeBanner');
+            if (!banner) return;
+            
+            const dirty = isDirty('news');
+            if (dirty) {
+                banner.style.display = 'block';
+                banner.style.backgroundColor = '#fff2e6';
+                banner.style.color = '#ff8000';
+                banner.style.borderColor = '#ffe5cc';
+                banner.innerHTML = '⚠️ <strong>未保存のローカル変更があります。</strong>GitHubにまだ反映されていないか、ビルド待ちです。<button onclick="forceSyncServer()" style="margin-left: 15px; padding: 2px 8px; font-size: 11px; background: #ff8000; color: white; border: none; border-radius: 4px; cursor: pointer;">サーバーデータで強制上書き</button>';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        async function forceSyncServer() {
+            if (!confirm('本当にサーバーのデータで強制上書きしますか？ローカルの変更は失われます。')) return;
+            try {
+                const response = await fetchWithCacheBusting('data/news.json');
+                if (response.ok) {
+                    const remoteList = await response.json();
+                    localStorage.setItem('vector_news', JSON.stringify(remoteList));
+                    setDirty('news', false);
+                    renderTable();
+                    showSyncNotice();
+                    alert('サーバーのデータで上書きしました。');
+                }
+            } catch (e) {
+                alert('サーバーからの読み込みに失敗しました。');
+            }
+        }
+
+        // リモートのデータを取得してローカルに同期
+        async function fetchRemoteNews() {
+            if (isDirty('news')) {
+                // Keep local changes
+                setTimeout(showSyncNotice, 100);
+                return;
+            }
+            try {
+                const response = await fetchWithCacheBusting('data/news.json');
+                if (response.ok) {
+                    const remoteList = await response.json();
+                    localStorage.setItem('vector_news', JSON.stringify(remoteList));
+                    setDirty('news', false);
+                }
+            } catch (e) {
+                console.warn('Could not fetch remote news list. Using local storage.', e);
+            }
+            setTimeout(showSyncNotice, 100);
+        }
 
         // localStorage の初期化
         function initLocalStorage() {
@@ -288,14 +346,46 @@
         }
 
         // お知らせの削除
-        function deleteNews(id) {
+        async function deleteNews(id) {
             if (!confirm('本当にこのお知らせを削除しますか？')) return;
 
             let newsList = JSON.parse(localStorage.getItem('vector_news') || '[]');
             newsList = newsList.filter(n => n.id !== id);
             localStorage.setItem('vector_news', JSON.stringify(newsList));
-            
+            setDirty('news', true);
+
+            const jsonStr = JSON.stringify(newsList, null, 2);
+
+            if (isGitHubIntegrated()) {
+                try {
+                    await pushToGitHub('data/news.json', jsonStr, `Update news.json via Admin Panel (Delete)`);
+                    setDirty('news', false);
+                    alert('お知らせを削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    renderTable();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりにファイルをダウンロードします。手動でアップロードしてください。');
+                    triggerManualDeleteDownload(jsonStr);
+                }
+            } else {
+                triggerManualDeleteDownload(jsonStr);
+            }
+        }
+
+        function triggerManualDeleteDownload(jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'news.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('お知らせを削除し、更新された「news.json」をダウンロードしました。プロジェクトの「data/」フォルダに配置してGitHubにアップロードしてください。');
+
             renderTable();
+            showSyncNotice();
         }
 
         // HTMLからスニペット（プレーンテキスト）を生成する関数
@@ -330,7 +420,7 @@
         }
 
         // 保存処理
-        function saveNews(event) {
+        async function saveNews(event) {
             event.preventDefault();
 
             const id = document.getElementById('editNewsId').value;
@@ -367,8 +457,51 @@
             }
 
             localStorage.setItem('vector_news', JSON.stringify(newsList));
+            setDirty('news', true);
+
+            const jsonStr = JSON.stringify(newsList, null, 2);
+
+            // Check if GitHub Integration is enabled
+            if (isGitHubIntegrated()) {
+                const submitBtn = event.target.querySelector('button[type="submit"]');
+                const origText = submitBtn.textContent;
+                submitBtn.textContent = '保存中...';
+                submitBtn.disabled = true;
+
+                try {
+                    await pushToGitHub('data/news.json', jsonStr, `Update news.json via Admin Panel (Save)`);
+                    setDirty('news', false);
+                    alert('お知らせデータを保存し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    hideEditor();
+                    renderTable();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりにファイルをダウンロードします。手動でアップロードしてください。');
+                    triggerManualDownload(jsonStr);
+                } finally {
+                    submitBtn.textContent = origText;
+                    submitBtn.disabled = false;
+                }
+            } else {
+                triggerManualDownload(jsonStr);
+            }
+        }
+
+        function triggerManualDownload(jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'news.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('お知らせデータを保存し、GitHub Pages用の「news.json」をダウンロードしました。\n\n【重要】\nダウンロードされた「news.json」ファイルを、プロジェクトの「data/」フォルダ内に配置（コピー）し、GitHubにアップロードしてください。これにより、他端末や一般の閲覧者にもお知らせが同期されます。');
+            
             hideEditor();
             renderTable();
+            showSyncNotice();
         }
     </script>
 </body>

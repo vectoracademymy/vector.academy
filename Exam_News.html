@@ -164,9 +164,9 @@
         let allUniversities = [];
         let activeUnivId = '';
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadData();
             initLocalStorage();
-            loadData();
             renderRecentExams();
             renderUnivTabs();
             
@@ -219,7 +219,27 @@
         }
 
         // データロード
-        function loadData() {
+        async function loadData() {
+            try {
+                const responseExams = await fetch('data/exams.json?t=' + new Date().getTime(), { cache: 'no-store' });
+                if (responseExams.ok) {
+                    const examList = await responseExams.json();
+                    localStorage.setItem('vector_exam_news', JSON.stringify(examList));
+                }
+            } catch (e) {
+                console.warn('Could not fetch remote exam list. Using local cache.', e);
+            }
+
+            try {
+                const responseUnivs = await fetch('data/universities.json?t=' + new Date().getTime(), { cache: 'no-store' });
+                if (responseUnivs.ok) {
+                    const univList = await responseUnivs.json();
+                    localStorage.setItem('vector_universities', JSON.stringify(univList));
+                }
+            } catch (e) {
+                console.warn('Could not fetch remote university list. Using local cache.', e);
+            }
+
             allUniversities = JSON.parse(localStorage.getItem('vector_universities') || '[]');
             allExams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
             

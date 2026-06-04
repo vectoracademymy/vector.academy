@@ -1,0 +1,22 @@
+[
+  {
+    "id": "utokyo",
+    "name": "東京大学",
+    "filePath": "Exams/utokyo.html"
+  },
+  {
+    "id": "kyoto",
+    "name": "京都大学",
+    "filePath": "Exams/kyoto.html"
+  },
+  {
+    "id": "waseda",
+    "name": "早稲田大学",
+    "filePath": "Exams/waseda.html"
+  },
+  {
+    "id": "keio",
+    "name": "慶應義塾大学",
+    "filePath": "Exams/keio.html"
+  }
+]

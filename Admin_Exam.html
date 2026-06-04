@@ -20,6 +20,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="CSS/sample.css">
+    <script src="js/github-sync.js"></script>
     
     <script>
         // セッションガード
@@ -72,6 +73,9 @@
             </div>
             <a href="Admin_Dashboard.html" class="btn-secondary">ダッシュボードへ戻る</a>
         </div>
+
+        <!-- 同期アラートバナー -->
+        <div id="syncNoticeBanner" style="display: none; padding: 12px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid #ffe5cc;"></div>
 
         <!-- 管理サブタブ -->
         <div class="admin-sub-tabs">
@@ -229,11 +233,88 @@
         ];
 
         // ページロード時
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchRemoteData();
             initLocalStorage();
             initQuill();
             renderAll();
         });
+
+        function showSyncNotice() {
+            const banner = document.getElementById('syncNoticeBanner');
+            if (!banner) return;
+            
+            const examsDirty = isDirty('exams');
+            const univsDirty = isDirty('universities');
+            
+            if (examsDirty || univsDirty) {
+                banner.style.display = 'block';
+                banner.style.backgroundColor = '#fff2e6';
+                banner.style.color = '#ff8000';
+                banner.style.borderColor = '#ffe5cc';
+                let msg = '⚠️ <strong>未保存のローカル変更があります。</strong>GitHubにまだ反映されていないか、ビルド待ちです。';
+                msg += '<button onclick="forceSyncServer()" style="margin-left: 15px; padding: 2px 8px; font-size: 11px; background: #ff8000; color: white; border: none; border-radius: 4px; cursor: pointer;">サーバーデータで強制上書き</button>';
+                banner.innerHTML = msg;
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        async function forceSyncServer() {
+            if (!confirm('本当にサーバーのデータで強制上書きしますか？ローカルの変更は失われます。')) return;
+            try {
+                const resExams = await fetchWithCacheBusting('data/exams.json');
+                if (resExams.ok) {
+                    const data = await resExams.json();
+                    localStorage.setItem('vector_exam_news', JSON.stringify(data));
+                    setDirty('exams', false);
+                }
+                const resUnivs = await fetchWithCacheBusting('data/universities.json');
+                if (resUnivs.ok) {
+                    const data = await resUnivs.json();
+                    localStorage.setItem('vector_universities', JSON.stringify(data));
+                    setDirty('universities', false);
+                }
+                renderAll();
+                showSyncNotice();
+                alert('サーバーのデータで上書きしました。');
+            } catch (e) {
+                alert('サーバーからの読み込みに失敗しました。');
+            }
+        }
+
+        // リモートのデータを取得してローカルに同期
+        async function fetchRemoteData() {
+            const exDirty = isDirty('exams');
+            const unDirty = isDirty('universities');
+            
+            if (!exDirty) {
+                try {
+                    const responseExams = await fetchWithCacheBusting('data/exams.json');
+                    if (responseExams.ok) {
+                        const remoteExams = await responseExams.json();
+                        localStorage.setItem('vector_exam_news', JSON.stringify(remoteExams));
+                        setDirty('exams', false);
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch remote exam list. Using local storage.', e);
+                }
+            }
+
+            if (!unDirty) {
+                try {
+                    const responseUnivs = await fetchWithCacheBusting('data/universities.json');
+                    if (responseUnivs.ok) {
+                        const remoteUnivs = await responseUnivs.json();
+                        localStorage.setItem('vector_universities', JSON.stringify(remoteUnivs));
+                        setDirty('universities', false);
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch remote university list. Using local storage.', e);
+                }
+            }
+            setTimeout(showSyncNotice, 100);
+        }
 
         // LocalStorage初期化
         function initLocalStorage() {
@@ -386,15 +467,58 @@
 
             list.push({ id, name, filePath });
             localStorage.setItem('vector_universities', JSON.stringify(list));
+            setDirty('universities', true);
 
-            // フォーム初期化
-            document.getElementById('univForm').reset();
-
-            renderUnivTable();
-            updateUnivSelectDropdown();
+            const jsonStr = JSON.stringify(list, null, 2);
+            syncUniv(jsonStr);
         }
 
-        function deleteUniversity(id) {
+        async function syncUniv(jsonStr) {
+            if (isGitHubIntegrated()) {
+                const btn = document.querySelector('#univForm button[type="submit"]');
+                const origText = btn.textContent;
+                btn.textContent = '同期中...';
+                btn.disabled = true;
+
+                try {
+                    await pushToGitHub('data/universities.json', jsonStr, `Update universities.json via Admin Panel`);
+                    setDirty('universities', false);
+                    alert('大学タブを追加し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    document.getElementById('univForm').reset();
+                    renderUnivTable();
+                    updateUnivSelectDropdown();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりにファイルをダウンロードします。手動でアップロードしてください。');
+                    triggerManualUnivDownload(jsonStr);
+                } finally {
+                    btn.textContent = origText;
+                    btn.disabled = false;
+                }
+            } else {
+                triggerManualUnivDownload(jsonStr);
+            }
+        }
+
+        function triggerManualUnivDownload(jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'universities.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('大学タブを追加し、「universities.json」をダウンロードしました。プロジェクトの「data/」フォルダに配置してGitHubにアップロードしてください。');
+
+            document.getElementById('univForm').reset();
+            renderUnivTable();
+            updateUnivSelectDropdown();
+            showSyncNotice();
+        }
+
+        async function deleteUniversity(id) {
             if (!confirm('この大学を削除しますか？\n（注: 既に投稿されたこの大学の解答速報のタグは残りますが、タブ一覧からは非表示になります）')) {
                 return;
             }
@@ -402,9 +526,42 @@
             let list = JSON.parse(localStorage.getItem('vector_universities') || '[]');
             list = list.filter(u => u.id !== id);
             localStorage.setItem('vector_universities', JSON.stringify(list));
+            setDirty('universities', true);
+
+            const jsonStr = JSON.stringify(list, null, 2);
+
+            if (isGitHubIntegrated()) {
+                try {
+                    await pushToGitHub('data/universities.json', jsonStr, `Delete university ${id} via Admin Panel`);
+                    setDirty('universities', false);
+                    alert('大学タブを削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    renderUnivTable();
+                    updateUnivSelectDropdown();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりにファイルをダウンロードします。手動でアップロードしてください。');
+                    triggerManualUnivDeleteDownload(jsonStr);
+                }
+            } else {
+                triggerManualUnivDeleteDownload(jsonStr);
+            }
+        }
+
+        function triggerManualUnivDeleteDownload(jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'universities.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('大学タブを削除し、更新された「universities.json」をダウンロードしました。プロジェクトの「data/」フォルダに配置してGitHubにアップロードしてください。');
 
             renderUnivTable();
             updateUnivSelectDropdown();
+            showSyncNotice();
         }
 
         // 2. 解答速報関連ロジック
@@ -477,14 +634,46 @@
             document.getElementById('examEditorView').style.display = 'block';
         }
 
-        function deleteExam(id) {
-            if (!confirm('この解答速報を削除しますか？')) return;
+        async function deleteExam(id) {
+            if (!confirm('この解答速報を削除しますか？\n（注: 個別のHTMLファイルはリポジトリから自動削除されません。必要に応じてGitHubから手動で削除してください）')) return;
 
             let exams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
             exams = exams.filter(ex => ex.id !== id);
             localStorage.setItem('vector_exam_news', JSON.stringify(exams));
+            setDirty('exams', true);
+
+            const jsonStr = JSON.stringify(exams, null, 2);
+
+            if (isGitHubIntegrated()) {
+                try {
+                    await pushToGitHub('data/exams.json', jsonStr, `Delete exam ${id} from exams.json`);
+                    setDirty('exams', false);
+                    alert('解答速報を削除し、GitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    renderExamTable();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりに「exams.json」ファイルをダウンロードします。');
+                    triggerManualExamDeleteDownload(jsonStr);
+                }
+            } else {
+                triggerManualExamDeleteDownload(jsonStr);
+            }
+        }
+
+        function triggerManualExamDeleteDownload(jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'exams.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('解答速報を削除し、更新された「exams.json」をダウンロードしました。プロジェクトの「data/」フォルダに配置してGitHubにアップロードしてください。');
 
             renderExamTable();
+            showSyncNotice();
         }
 
         // QuillエディタからクリーンにHTMLを取得する関数 (KaTeX重複レンダリング対策)
@@ -666,7 +855,7 @@
 </html>`;
         }
 
-        function saveExam(e) {
+        async function saveExam(e) {
             e.preventDefault();
             const id = document.getElementById('editExamId').value;
             const title = document.getElementById('examTitle').value.trim();
@@ -720,8 +909,45 @@
                 });
             }
 
-            // HTMLのエクスポート処理
+            localStorage.setItem('vector_exam_news', JSON.stringify(exams));
+            setDirty('exams', true);
+
             const htmlContent = generateExamHTML(title, univName, year, today, content);
+            const jsonStr = JSON.stringify(exams, null, 2);
+
+            if (isGitHubIntegrated()) {
+                const btn = e.target.querySelector('button[type="submit"]');
+                const origText = btn.textContent;
+                btn.textContent = '保存中...';
+                btn.disabled = true;
+
+                try {
+                    // Commit HTML first
+                    await pushToGitHub(filePath, htmlContent, `Add/Update exam speed news HTML: ${fileName}.html`);
+                    // Commit JSON second
+                    await pushToGitHub('data/exams.json', jsonStr, `Update exams.json list via Admin Panel`);
+                    
+                    setDirty('exams', false);
+                    alert('解答速報データを保存し、個別用HTMLとリスト用JSONの両方をGitHubへ自動同期しました！反映されるまで1〜2分お待ちください。');
+                    
+                    hideExamEditor();
+                    renderExamTable();
+                    showSyncNotice();
+                } catch (err) {
+                    console.error(err);
+                    alert('GitHubへの自動同期に失敗しました: ' + err.message + '\n\n代わりにファイルをダウンロードします。手動でアップロードしてください。');
+                    triggerManualExamDownload(fileName, htmlContent, jsonStr);
+                } finally {
+                    btn.textContent = origText;
+                    btn.disabled = false;
+                }
+            } else {
+                triggerManualExamDownload(fileName, htmlContent, jsonStr);
+            }
+        }
+
+        function triggerManualExamDownload(fileName, htmlContent, jsonStr) {
+            // HTMLのエクスポート処理
             const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -730,12 +956,20 @@
             link.click();
             document.body.removeChild(link);
 
-            localStorage.setItem('vector_exam_news', JSON.stringify(exams));
-            
-            alert('解答速報データを保存し、個別用HTMLファイル（' + fileName + '.html）をダウンロードしました。\\n\\n【重要】\\nダウンロードされたファイルを、プロジェクトの「Exams/」フォルダ内に配置（コピー）してください。これにより、実際の個別ページとして正常に動作するようになります。');
+            // JSONファイルのエクスポート自動ダウンロード処理
+            const jsonBlob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const jsonLink = document.createElement('a');
+            jsonLink.href = URL.createObjectURL(jsonBlob);
+            jsonLink.setAttribute('download', 'exams.json');
+            document.body.appendChild(jsonLink);
+            jsonLink.click();
+            document.body.removeChild(jsonLink);
+
+            alert('解答速報データを保存し、個別用HTML（' + fileName + '.html）とリスト用の「exams.json」をダウンロードしました。\n\n【重要】\n1. HTMLファイルは「Exams/」フォルダ内に配置してください。\n2. 「exams.json」は「data/」フォルダ内に配置してください。\nその後、両方をGitHubにアップロードしてください。');
 
             hideExamEditor();
             renderExamTable();
+            showSyncNotice();
         }
 
         // HTMLエスケープ
