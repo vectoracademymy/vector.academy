@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>お問い合わせ・FAQ管理 - Vector学院</title>
+    <meta name="description" content="Vector学院のお問い合わせ・FAQ管理ページです。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- KaTeX (数式) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <!-- Quill リッチテキストエディタ -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@enzedonline/quill-blot-formatter2@3.1.1/dist/css/quill-blot-formatter2.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@enzedonline/quill-blot-formatter2@3.1.1/dist/index.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/sample.css">
+
+    <!-- セッションガード -->
+    <script>
+        if (sessionStorage.getItem('admin_auth') !== 'true') {
+            window.location.replace('Admin_login.html');
+        }
+    </script>
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="index.html" class="nav-logo">
+                <img src="c:\Users\nyann\Downloads\Code_Generated_Image.png" alt="Vector学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+            <a href="Admin_login.html" class="nav-button">
+                <p>管理者用ログイン</p>
+                <p>Admin Login</p>
+            </a>
+        </nav>
+    </header>
+
+    <main class="dashboard-container">
+        <!-- ページヘッダー -->
+        <div class="dashboard-header">
+            <div>
+                <h1>お問い合わせ・FAQ管理</h1>
+                <p style="margin:4px 0 0 0;color:#666;font-size:14px;">よくある質問の管理とお問い合わせ内容の確認ができます。</p>
+            </div>
+            <a href="Admin_Dashboard.html" class="btn-secondary">← ダッシュボードへ戻る</a>
+        </div>
+
+        <!-- タブ切り替え -->
+        <div class="admin-sub-tabs">
+            <button class="admin-sub-tab-button active" id="tabBtnFaq" onclick="switchTab('faq')">
+                📋 FAQ管理
+            </button>
+            <button class="admin-sub-tab-button" id="tabBtnInquiry" onclick="switchTab('inquiry')">
+                ✉️ お問い合わせ一覧
+                <span class="unread-count-badge" id="unreadBadge" style="display:none;"></span>
+            </button>
+        </div>
+
+        <!-- ========== FAQ タブ ========== -->
+        <div id="tabFaq">
+
+            <!-- FAQ 一覧 -->
+            <div class="admin-news-container" id="faqListView">
+                <div class="admin-news-header">
+                    <h2>FAQ一覧</h2>
+                    <button class="btn-primary" onclick="showFaqEditor()">＋ 新規FAQ作成</button>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width:48%;">質問</th>
+                            <th style="width:25%;">タグ</th>
+                            <th style="width:12%;">日付</th>
+                            <th style="width:15%;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="faqTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- FAQ エディタ -->
+            <div class="admin-news-container" id="faqEditorView" style="display:none;">
+                <div class="admin-news-header">
+                    <h2 id="faqEditorTitle">FAQの新規作成</h2>
+                    <button class="btn-secondary" onclick="hideFaqEditor()">キャンセル</button>
+                </div>
+                <form class="editor-form" onsubmit="saveFaq(event)">
+                    <input type="hidden" id="editFaqId">
+
+                    <div class="editor-group">
+                        <label for="faqQuestion">質問文</label>
+                        <input type="text" id="faqQuestion" class="editor-title-input" required
+                               placeholder="質問文を入力してください">
+                    </div>
+
+                    <div class="editor-group">
+                        <label>回答（リッチテキスト）</label>
+                        <div id="faqEditorContainer"></div>
+                    </div>
+
+                    <div class="editor-group">
+                        <label for="faqTags">タグ</label>
+                        <input type="text" id="faqTags" class="editor-title-input"
+                               placeholder="例：受講について, 料金, 模擬試験"
+                               style="font-weight:normal;">
+                        <p class="tag-input-hint">カンマ（,）区切りで複数のタグを入力できます。</p>
+                    </div>
+
+                    <div class="editor-actions">
+                        <button type="button" class="btn-secondary" onclick="hideFaqEditor()">キャンセル</button>
+                        <button type="submit" class="btn-primary">保存する</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========== お問い合わせ タブ ========== -->
+        <div id="tabInquiry" style="display:none;">
+            <div class="admin-news-container">
+                <div class="admin-news-header">
+                    <h2>お問い合わせ一覧</h2>
+                    <button class="btn-secondary" onclick="markAllRead()">すべて既読にする</button>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width:12%;">日付</th>
+                            <th style="width:18%;">お名前</th>
+                            <th style="width:18%;">カテゴリ</th>
+                            <th style="width:12%;">ステータス</th>
+                            <th style="width:40%;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inquiryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== お問い合わせ詳細モーダル ========== -->
+    <div class="modal-overlay" id="inquiryModal" onclick="closeModalOnBg(event)">
+        <div class="modal-content" style="max-width:620px;">
+            <button class="modal-close" onclick="closeInquiryModal()">✕</button>
+
+            <div class="news-detail-header">
+                <div id="modalStatusBadge" style="margin-bottom:8px;"></div>
+                <h2 class="news-detail-title">お問い合わせ詳細</h2>
+                <div id="modalDateLine" style="font-size:13px;color:#888;margin-top:6px;"></div>
+            </div>
+
+            <div>
+                <div class="inquiry-detail-section">
+                    <div class="inquiry-detail-label">お名前</div>
+                    <div class="inquiry-detail-value" id="modalName"></div>
+                </div>
+                <div class="inquiry-detail-section">
+                    <div class="inquiry-detail-label">返信用メールアドレス</div>
+                    <div class="inquiry-detail-value" id="modalEmail" style="font-family:monospace;font-size:14px;"></div>
+                </div>
+                <div class="inquiry-detail-section" id="modalCategoryRow">
+                    <div class="inquiry-detail-label">カテゴリ</div>
+                    <div class="inquiry-detail-value" id="modalCategory"></div>
+                </div>
+                <div class="inquiry-detail-section">
+                    <div class="inquiry-detail-label">お問い合わせ内容</div>
+                    <div class="inquiry-detail-value" id="modalMessage" style="white-space:pre-wrap;min-height:80px;"></div>
+                </div>
+            </div>
+
+            <div style="margin-top:24px;display:flex;gap:10px;justify-content:flex-end;align-items:center;">
+                <button class="btn-secondary" onclick="closeInquiryModal()">閉じる</button>
+                <button class="btn-primary" id="markReadBtn" onclick="markCurrentRead()" style="display:none;">既読にする</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =============================================
+        // 定数・変数
+        // =============================================
+        const FAQ_KEY     = 'vector_faq';
+        const CONTACT_KEY = 'vector_contacts';
+
+        let quill = null;
+        let currentInquiryId = null;
+
+        // =============================================
+        // 初期化
+        // =============================================
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!localStorage.getItem(FAQ_KEY))     localStorage.setItem(FAQ_KEY,     JSON.stringify([]));
+            if (!localStorage.getItem(CONTACT_KEY)) localStorage.setItem(CONTACT_KEY, JSON.stringify([]));
+
+            initQuill();
+            renderFaqTable();
+            renderInquiryTable();
+            updateUnreadBadge();
+        });
+
+        function initQuill() {
+            // BlotFormatterとそのアライメントフォーマットの登録
+            const BlotFormatter = QuillBlotFormatter2.default;
+            const { createImageAlignAttributor, createIframeAlignAttributor } = QuillBlotFormatter2;
+            Quill.register(createImageAlignAttributor(Quill), true);
+            Quill.register(createIframeAlignAttributor(Quill), true);
+            Quill.register('modules/blotFormatter2', BlotFormatter);
+
+            const toolbarOptions = [
+                [{ 'font': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'align': [] }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'image', 'formula'],
+                ['clean']
+            ];
+            quill = new Quill('#faqEditorContainer', {
+                modules: { 
+                    toolbar: toolbarOptions,
+                    blotFormatter2: {}
+                },
+                theme: 'snow',
+                placeholder: '回答を入力してください。画像の貼り付けや数式の挿入も可能です。'
+            });
+        }
+
+        // =============================================
+        // タブ切り替え
+        // =============================================
+        function switchTab(tab) {
+            document.getElementById('tabFaq').style.display     = tab === 'faq'     ? 'block' : 'none';
+            document.getElementById('tabInquiry').style.display = tab === 'inquiry' ? 'block' : 'none';
+            document.getElementById('tabBtnFaq').classList.toggle('active',     tab === 'faq');
+            document.getElementById('tabBtnInquiry').classList.toggle('active', tab === 'inquiry');
+        }
+
+        // =============================================
+        // FAQ 管理
+        // =============================================
+        function renderFaqTable() {
+            const faqList = JSON.parse(localStorage.getItem(FAQ_KEY) || '[]');
+            const tbody   = document.getElementById('faqTableBody');
+
+            if (faqList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;padding:32px;">登録済みのFAQはありません。</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = faqList.map(faq => `
+                <tr>
+                    <td><strong>${escapeHtml(faq.question)}</strong></td>
+                    <td style="line-height:2;">
+                        ${(faq.tags || []).map(t => `<span class="faq-tag-label">${escapeHtml(t.trim())}</span> `).join('')}
+                    </td>
+                    <td>${escapeHtml(faq.date)}</td>
+                    <td>
+                        <button class="action-badge badge-edit"   onclick="editFaq('${faq.id}')">編集</button>
+                        <button class="action-badge badge-delete" onclick="deleteFaq('${faq.id}')">削除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function showFaqEditor() {
+            document.getElementById('editFaqId').value  = '';
+            document.getElementById('faqQuestion').value = '';
+            document.getElementById('faqTags').value    = '';
+            if (quill) quill.setContents([]);
+            document.getElementById('faqEditorTitle').textContent = 'FAQの新規作成';
+            document.getElementById('faqListView').style.display   = 'none';
+            document.getElementById('faqEditorView').style.display = 'block';
+            document.getElementById('faqQuestion').focus();
+        }
+
+        function hideFaqEditor() {
+            document.getElementById('faqListView').style.display   = 'block';
+            document.getElementById('faqEditorView').style.display = 'none';
+        }
+
+        function editFaq(id) {
+            const faqList = JSON.parse(localStorage.getItem(FAQ_KEY) || '[]');
+            const faq     = faqList.find(f => f.id === id);
+            if (!faq) return;
+
+            document.getElementById('editFaqId').value   = faq.id;
+            document.getElementById('faqQuestion').value = faq.question;
+            document.getElementById('faqTags').value     = (faq.tags || []).join(', ');
+            if (quill) quill.clipboard.dangerouslyPasteHTML(faq.answer || '');
+
+            document.getElementById('faqEditorTitle').textContent = 'FAQの編集';
+            document.getElementById('faqListView').style.display   = 'none';
+            document.getElementById('faqEditorView').style.display = 'block';
+        }
+
+        function deleteFaq(id) {
+            if (!confirm('このFAQを削除しますか？')) return;
+            let faqList = JSON.parse(localStorage.getItem(FAQ_KEY) || '[]');
+            faqList = faqList.filter(f => f.id !== id);
+            localStorage.setItem(FAQ_KEY, JSON.stringify(faqList));
+            renderFaqTable();
+        }
+
+        function getCleanHTML(quillInstance) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = quillInstance.root.innerHTML;
+            tempDiv.querySelectorAll('.ql-formula').forEach(el => {
+                const tex = el.getAttribute('data-value');
+                el.innerHTML = '';
+                el.removeAttribute('contenteditable');
+                if (tex) el.setAttribute('data-value', tex);
+            });
+            tempDiv.querySelectorAll('.ql-cursor').forEach(c => c.remove());
+            return tempDiv.innerHTML;
+        }
+
+        function saveFaq(event) {
+            event.preventDefault();
+            const id       = document.getElementById('editFaqId').value;
+            const question = document.getElementById('faqQuestion').value.trim();
+            const tagsRaw  = document.getElementById('faqTags').value;
+            const tags     = tagsRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+            const answer   = getCleanHTML(quill);
+            const today    = new Date().toISOString().split('T')[0];
+
+            let faqList = JSON.parse(localStorage.getItem(FAQ_KEY) || '[]');
+
+            if (id) {
+                const idx = faqList.findIndex(f => f.id === id);
+                if (idx !== -1) faqList[idx] = { ...faqList[idx], question, answer, tags, date: today };
+            } else {
+                faqList.push({ id: 'faq-' + Date.now(), question, answer, tags, date: today });
+            }
+
+            localStorage.setItem(FAQ_KEY, JSON.stringify(faqList));
+            hideFaqEditor();
+            renderFaqTable();
+        }
+
+        // =============================================
+        // お問い合わせ管理
+        // =============================================
+        function renderInquiryTable() {
+            const contacts = JSON.parse(localStorage.getItem(CONTACT_KEY) || '[]');
+            const tbody    = document.getElementById('inquiryTableBody');
+
+            if (contacts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:32px;">お問い合わせはまだありません。</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = contacts.map(c => `
+                <tr style="${c.status === 'unread' ? 'background:#fffdf7;font-weight:600;' : ''}">
+                    <td>${escapeHtml(c.date)}</td>
+                    <td>${escapeHtml(c.name)}</td>
+                    <td>${escapeHtml(c.category || '（未選択）')}</td>
+                    <td>
+                        ${c.status === 'unread'
+                            ? '<span class="status-badge-unread">未読</span>'
+                            : '<span class="status-badge-read">既読</span>'}
+                    </td>
+                    <td>
+                        <button class="action-badge badge-view"   onclick="showInquiryDetail('${c.id}')">詳細を見る</button>
+                        <button class="action-badge badge-delete" onclick="deleteInquiry('${c.id}')">削除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateUnreadBadge() {
+            const contacts    = JSON.parse(localStorage.getItem(CONTACT_KEY) || '[]');
+            const unreadCount = contacts.filter(c => c.status === 'unread').length;
+            const badge       = document.getElementById('unreadBadge');
+            if (unreadCount > 0) {
+                badge.textContent  = unreadCount;
+                badge.style.display = 'inline-flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function showInquiryDetail(id) {
+            const contacts = JSON.parse(localStorage.getItem(CONTACT_KEY) || '[]');
+            const contact  = contacts.find(c => c.id === id);
+            if (!contact) return;
+
+            currentInquiryId = id;
+
+            document.getElementById('modalStatusBadge').innerHTML =
+                contact.status === 'unread'
+                    ? '<span class="status-badge-unread">未読</span>'
+                    : '<span class="status-badge-read">既読</span>';
+
+            document.getElementById('modalDateLine').textContent = contact.date + '　受信';
+            document.getElementById('modalName').textContent     = contact.name;
+            document.getElementById('modalEmail').textContent    = contact.email;
+            document.getElementById('modalMessage').textContent  = contact.message;
+
+            const catRow = document.getElementById('modalCategoryRow');
+            const catVal = document.getElementById('modalCategory');
+            if (contact.category) {
+                catVal.textContent      = contact.category;
+                catRow.style.display    = 'block';
+            } else {
+                catRow.style.display    = 'none';
+            }
+
+            // 未読なら詳細を開いた時点で既読化
+            if (contact.status === 'unread') {
+                markContactRead(id, false); // silently update
+                document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge-read">既読</span>';
+                document.getElementById('markReadBtn').style.display  = 'none';
+            } else {
+                document.getElementById('markReadBtn').style.display  = 'none';
+            }
+
+            document.getElementById('inquiryModal').classList.add('active');
+        }
+
+        function markContactRead(id, rerender = true) {
+            let contacts = JSON.parse(localStorage.getItem(CONTACT_KEY) || '[]');
+            const idx = contacts.findIndex(c => c.id === id);
+            if (idx !== -1) contacts[idx].status = 'read';
+            localStorage.setItem(CONTACT_KEY, JSON.stringify(contacts));
+            if (rerender) {
+                renderInquiryTable();
+                updateUnreadBadge();
+            } else {
+                renderInquiryTable();
+                updateUnreadBadge();
+            }
+        }
+
+        function markCurrentRead() {
+            if (currentInquiryId) {
+                markContactRead(currentInquiryId);
+                document.getElementById('markReadBtn').style.display  = 'none';
+                document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge-read">既読</span>';
+            }
+        }
+
+        function markAllRead() {
+            if (!confirm('すべてのお問い合わせを既読にしますか？')) return;
+            let contacts = JSON.parse(localStorage.getItem(CONTACT_KEY) || '[]');
+            contacts = contacts.map(c => ({ ...c, status: 'read' }));
+            localStorage.setItem(CONTACT_KEY, JSON.stringify(contacts));
+            renderInquiryTable();
+            updateUnreadBadge();
+        }
+
+        function deleteInquiry(id) {
+            if (!confirm('このお問い合わせを削除しますか？')) return;
+            let contacts = JSON.parse(localStorage.getItem(CONTACT_KEY) || '[]');
+            contacts = contacts.filter(c => c.id !== id);
+            localStorage.setItem(CONTACT_KEY, JSON.stringify(contacts));
+            renderInquiryTable();
+            updateUnreadBadge();
+        }
+
+        function closeModalOnBg(event) {
+            if (event.target === document.getElementById('inquiryModal')) closeInquiryModal();
+        }
+
+        function closeInquiryModal() {
+            document.getElementById('inquiryModal').classList.remove('active');
+            currentInquiryId = null;
+        }
+
+        // =============================================
+        // ログアウト
+        // =============================================
+        function logout() {
+            sessionStorage.removeItem('admin_auth');
+            window.location.replace('Admin_login.html');
+        }
+
+        // =============================================
+        // ユーティリティ
+        // =============================================
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str || ''));
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

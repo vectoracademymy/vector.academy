@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>解答速報・大学管理 - Vector学院</title>
+    <meta name="description" content="Vector学院の解答速報および大学別タブの管理ページです。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- 数式ライブラリ (KaTeX) - Quillの前にロードする必要あり -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    
+    <!-- リッチテキストエディタ (Quill 2.0.2) -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@enzedonline/quill-blot-formatter2@3.1.1/dist/css/quill-blot-formatter2.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@enzedonline/quill-blot-formatter2@3.1.1/dist/index.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/sample.css">
+    
+    <script>
+        // セッションガード
+        if (sessionStorage.getItem('admin_auth') !== 'true') {
+            window.location.replace('Admin_login.html');
+        }
+    </script>
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="index.html" class="nav-logo">
+                <img src="c:\Users\nyann\Downloads\Code_Generated_Image.png" alt="Vevtor学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+            <a href="Admin_login.html" class="nav-button">
+                <p>管理者用ログイン</p>
+                <p>Admin Login</p>
+            </a>
+        </nav>
+    </header>
+
+    <main class="dashboard-container">
+        <div class="dashboard-header">
+            <div>
+                <h1>解答速報・大学管理</h1>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">大学別タブの編集や解答速報の作成・編集を行います。</p>
+            </div>
+            <a href="Admin_Dashboard.html" class="btn-secondary">ダッシュボードへ戻る</a>
+        </div>
+
+        <!-- 管理サブタブ -->
+        <div class="admin-sub-tabs">
+            <button class="admin-sub-tab-button active" id="subTabExam" onclick="switchSubTab('exam')">解答速報管理</button>
+            <button class="admin-sub-tab-button" id="subTabUniv" onclick="switchSubTab('univ')">大学（タブ）管理</button>
+        </div>
+
+        <!-- ==================== 解答速報管理セクション ==================== -->
+        <div class="admin-news-container" id="examSection">
+            <div class="admin-news-header">
+                <h2>登録済みの解答速報一覧</h2>
+                <button class="btn-primary" onclick="showExamEditor()">＋ 新規解答速報作成</button>
+            </div>
+            
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">日付</th>
+                        <th style="width: 12%;">年度</th>
+                        <th style="width: 20%;">大学名</th>
+                        <th style="width: 41%;">タイトル</th>
+                        <th style="width: 15%;">アクション</th>
+                    </tr>
+                </thead>
+                <tbody id="examTableBody">
+                    <!-- JSで動的描画 -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 解答速報エディタ画面（作成・編集） -->
+        <div class="admin-news-container" id="examEditorView" style="display: none;">
+            <div class="admin-news-header">
+                <h2 id="editorTitle">解答速報の作成</h2>
+                <button class="btn-secondary" onclick="hideExamEditor()">キャンセル</button>
+            </div>
+
+            <form class="editor-form" onsubmit="saveExam(event)">
+                <input type="hidden" id="editExamId">
+                
+                <div class="editor-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 2; min-width: 300px;">
+                        <label for="examTitle">タイトル</label>
+                        <input type="text" id="examTitle" class="editor-title-input" required placeholder="例: 理系数学 第1問 解答速報">
+                    </div>
+                    <div style="flex: 1.5; min-width: 250px;">
+                        <label for="examFileName">ファイル名 (半角英数字、例: utokyo_2026_math1)</label>
+                        <input type="text" id="examFileName" class="editor-title-input" required pattern="^[a-zA-Z0-9_\-]+$" placeholder="例: utokyo_2026_math1">
+                    </div>
+                </div>
+                <div class="editor-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 150px;">
+                        <label for="examYear">年度 (西暦)</label>
+                        <input type="number" id="examYear" class="editor-title-input" required min="2000" max="2100" placeholder="例: 2026">
+                    </div>
+                    <div style="flex: 1; min-width: 180px;">
+                        <label for="examUnivSelect">対象大学</label>
+                        <select id="examUnivSelect" class="editor-title-input" style="font-weight: normal; background-color: white; cursor: pointer;" required>
+                            <!-- JSで動的に大学選択肢を挿入 -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="editor-group">
+                    <label>本文（解答解説・画像ドラッグ＆ドロップ、数式挿入、文字装飾可）</label>
+                    <div id="editor-container"></div>
+                </div>
+
+                <div class="editor-actions">
+                    <button type="button" class="btn-secondary" onclick="hideExamEditor()">キャンセル</button>
+                    <button type="submit" class="btn-primary">保存する</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ==================== 大学（タブ）管理セクション ==================== -->
+        <div class="admin-news-container" id="univSection" style="display: none;">
+            <div class="admin-news-header" style="flex-direction: column; align-items: stretch; gap: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>大学タブ一覧</h2>
+                    <p style="margin: 0; color: #888; font-size: 13px;">※Exam_News.htmlにタブとして表示されます。</p>
+                </div>
+                
+                <!-- 新規登録フォーム -->
+                <form id="univForm" onsubmit="saveUniversity(event)" style="background-color: #f5fcfb; padding: 20px; border-radius: 8px; border: 1.5px dashed #49cfc4; display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+                    <div style="flex: 1; min-width: 180px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">大学名</label>
+                        <input type="text" id="univName" class="editor-title-input" style="padding: 8px 12px; font-size: 14px;" required placeholder="例: 大阪大学">
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">大学ID (英数字)</label>
+                        <input type="text" id="univId" class="editor-title-input" style="padding: 8px 12px; font-size: 14px;" required pattern="^[a-zA-Z0-9_\-]+$" placeholder="例: osaka">
+                    </div>
+                    <div style="flex: 1.5; min-width: 220px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">個別コンテンツファイルパス</label>
+                        <input type="text" id="univFilePath" class="editor-title-input" style="padding: 8px 12px; font-size: 14px;" required placeholder="例: Exams/osaka.html">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn-primary" style="padding: 8px 20px; font-size: 14px; height: 38px;">＋ 大学を追加</button>
+                    </div>
+                </form>
+            </div>
+
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">大学名</th>
+                        <th style="width: 25%;">大学ID</th>
+                        <th style="width: 35%;">コンテンツファイルパス</th>
+                        <th style="width: 15%;">アクション</th>
+                    </tr>
+                </thead>
+                <tbody id="univTableBody">
+                    <!-- JSで動的描画 -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        let quill;
+        
+        // 初期大学プリセット
+        const defaultUniversities = [
+            { id: 'utokyo', name: '東京大学', filePath: 'Exams/utokyo.html' },
+            { id: 'kyoto', name: '京都大学', filePath: 'Exams/kyoto.html' },
+            { id: 'waseda', name: '早稲田大学', filePath: 'Exams/waseda.html' },
+            { id: 'keio', name: '慶應義塾大学', filePath: 'Exams/keio.html' }
+        ];
+
+        // 初期解答速報プリセット
+        const defaultExams = [
+            {
+                id: 'exam-demo-1',
+                title: '東京大学 理系数学 第1問 解答速報',
+                universityId: 'utokyo',
+                year: 2026,
+                fileName: 'exam-demo-1',
+                filePath: 'Exams/exam-demo-1.html',
+                content: `<p>東京大学2026年理系数学第1問の解答速報です。</p><p>本問は、微分法と不等式の証明に関する標準的な融合問題でした。</p><p>与えられた関数を $f(x)$ とおきます：</p><p>$$f(x) = e^x - (1 + x + \\frac{1}{2}x^2)$$</p><p>これについて導関数を求めると、以下のようになります。</p><p>$$f'(x) = e^x - (1 + x)$$</p><p>$$f''(x) = e^x - 1$$</p><p>$x > 0$ において $f''(x) > 0$ であるため、導関数 $f'(x)$ は単調増加となります。$f'(0) = 0$ より、 $x > 0$ で $f'(x) > 0$ が成り立ちます。したがって $f(x)$ も単調増加となり、 $f(0) = 0$ から次式が証明されます。</p><p>$$e^x > 1 + x + \\frac{1}{2}x^2 \\quad (x > 0)$$</p><p><span style="color: #dc3545; font-weight: bold;">ポイント:</span> マクローリン展開の第3項までを取り出した不等式評価は頻出です。微分を繰り返して確実に得点しましょう。</p>`,
+                snippet: '東京大学2026年理系数学第1問の解答速報です。本問は微分法と不等式の証明に関する標準的な問題でした。',
+                date: '2026-05-25'
+            },
+            {
+                id: 'exam-demo-2',
+                title: '早稲田大学 理工学部 数学 第3問 解説',
+                universityId: 'waseda',
+                year: 2026,
+                fileName: 'exam-demo-2',
+                filePath: 'Exams/exam-demo-2.html',
+                content: `<p>早稲田大学2026年理工学部数学第3問の解答解説です。</p><p>本問は、定積分を用いた極限（区分求積法）の応用問題でした。</p><p>極限値 $S$ は以下のように定式化されます。</p><p>$$S = \\lim_{n \\to \\infty} \\frac{1}{n} \\sum_{k=1}^{n} \\cos\\left(\\frac{k\\pi}{2n}\\right)$$</p><p>これを定積分に書き直すと、</p><p>$$S = \\int_{0}^{1} \\cos\\left(\\frac{\\pi}{2}x\\right) dx$$</p><p>となります。積分を実行すると、</p><p>$$S = \\left[ \\frac{2}{\\pi} \\sin\\left(\\frac{\\pi}{2}x\\right) \\right]_{0}^{1} = \\frac{2}{\\pi}$$</p><p>が得られます。</p>`,
+                snippet: '早稲田大学2026年理工学部数学第3問の解答解説です。定積分を用いた極限（区分求積法）の応用問題でした。',
+                date: '2026-05-24'
+            }
+        ];
+
+        // ページロード時
+        window.addEventListener('DOMContentLoaded', () => {
+            initLocalStorage();
+            initQuill();
+            renderAll();
+        });
+
+        // LocalStorage初期化
+        function initLocalStorage() {
+            if (!localStorage.getItem('vector_universities')) {
+                localStorage.setItem('vector_universities', JSON.stringify(defaultUniversities));
+            }
+            if (!localStorage.getItem('vector_exam_news')) {
+                localStorage.setItem('vector_exam_news', JSON.stringify(defaultExams));
+            } else {
+                // 年度・ファイル名マイグレーション（すでにデータがある場合）
+                try {
+                    let exams = JSON.parse(localStorage.getItem('vector_exam_news'));
+                    let modified = false;
+                    exams.forEach(ex => {
+                        if (!ex.hasOwnProperty('year')) {
+                            ex.year = 2026;
+                            modified = true;
+                        }
+                        if (!ex.hasOwnProperty('fileName')) {
+                            ex.fileName = ex.id;
+                            modified = true;
+                        }
+                        if (!ex.hasOwnProperty('filePath')) {
+                            ex.filePath = 'Exams/' + ex.fileName + '.html';
+                            modified = true;
+                        }
+                    });
+                    if (modified) {
+                        localStorage.setItem('vector_exam_news', JSON.stringify(exams));
+                    }
+                } catch(e) {
+                    console.error('Migration error:', e);
+                }
+            }
+        }
+
+        // Quillエディタ初期化
+        function initQuill() {
+            // BlotFormatterとそのアライメントフォーマットの登録
+            const BlotFormatter = QuillBlotFormatter2.default;
+            const { createImageAlignAttributor, createIframeAlignAttributor } = QuillBlotFormatter2;
+            Quill.register(createImageAlignAttributor(Quill), true);
+            Quill.register(createIframeAlignAttributor(Quill), true);
+            Quill.register('modules/blotFormatter2', BlotFormatter);
+
+            const toolbarOptions = [
+                [{ 'font': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'align': [] }],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link', 'image', 'formula'],
+                ['clean']
+            ];
+
+            quill = new Quill('#editor-container', {
+                modules: {
+                    toolbar: toolbarOptions,
+                    blotFormatter2: {}
+                },
+                theme: 'snow',
+                placeholder: 'ここに解答解説を記述してください。数式は「f(x)」ボタンからTeX記法で入力できます。画像や解説図もドラッグ＆ドロップで挿入可能です。'
+            });
+        }
+
+        // 管理タブの切り替え
+        function switchSubTab(type) {
+            const tabExam = document.getElementById('subTabExam');
+            const tabUniv = document.getElementById('subTabUniv');
+            const secExam = document.getElementById('examSection');
+            const secUniv = document.getElementById('univSection');
+            const editorView = document.getElementById('examEditorView');
+
+            editorView.style.display = 'none';
+
+            if (type === 'exam') {
+                tabExam.classList.add('active');
+                tabUniv.classList.remove('active');
+                secExam.style.display = 'block';
+                secUniv.style.display = 'none';
+                renderExamTable();
+            } else {
+                tabExam.classList.remove('active');
+                tabUniv.classList.add('active');
+                secExam.style.display = 'none';
+                secUniv.style.display = 'block';
+                renderUnivTable();
+            }
+        }
+
+        // すべて描画
+        function renderAll() {
+            renderExamTable();
+            renderUnivTable();
+            updateUnivSelectDropdown();
+        }
+
+        // 1. 大学（タブ）関連ロジック
+        function renderUnivTable() {
+            const list = JSON.parse(localStorage.getItem('vector_universities') || '[]');
+            const tableBody = document.getElementById('univTableBody');
+            tableBody.innerHTML = '';
+
+            if (list.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888;">登録されている大学はありません。</td></tr>`;
+                return;
+            }
+
+            list.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${escapeHtml(u.name)}</strong></td>
+                    <td><code>${escapeHtml(u.id)}</code></td>
+                    <td><span style="color: #666; font-size:13px;">${escapeHtml(u.filePath)}</span></td>
+                    <td>
+                        <button class="action-badge badge-delete" onclick="deleteUniversity('${u.id}')">削除</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function updateUnivSelectDropdown() {
+            const list = JSON.parse(localStorage.getItem('vector_universities') || '[]');
+            const select = document.getElementById('examUnivSelect');
+            select.innerHTML = '<option value="" disabled selected>選択してください</option>';
+
+            list.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function saveUniversity(e) {
+            e.preventDefault();
+            const name = document.getElementById('univName').value.trim();
+            const id = document.getElementById('univId').value.trim();
+            const filePath = document.getElementById('univFilePath').value.trim();
+
+            let list = JSON.parse(localStorage.getItem('vector_universities') || '[]');
+
+            // 重複チェック
+            if (list.some(u => u.id === id)) {
+                alert('この大学IDは既に登録されています。別のIDを使用してください。');
+                return;
+            }
+
+            list.push({ id, name, filePath });
+            localStorage.setItem('vector_universities', JSON.stringify(list));
+
+            // フォーム初期化
+            document.getElementById('univForm').reset();
+
+            renderUnivTable();
+            updateUnivSelectDropdown();
+        }
+
+        function deleteUniversity(id) {
+            if (!confirm('この大学を削除しますか？\n（注: 既に投稿されたこの大学の解答速報のタグは残りますが、タブ一覧からは非表示になります）')) {
+                return;
+            }
+
+            let list = JSON.parse(localStorage.getItem('vector_universities') || '[]');
+            list = list.filter(u => u.id !== id);
+            localStorage.setItem('vector_universities', JSON.stringify(list));
+
+            renderUnivTable();
+            updateUnivSelectDropdown();
+        }
+
+        // 2. 解答速報関連ロジック
+        function renderExamTable() {
+            const exams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
+            const univs = JSON.parse(localStorage.getItem('vector_universities') || '[]');
+            const tableBody = document.getElementById('examTableBody');
+            tableBody.innerHTML = '';
+
+            if (exams.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #888;">登録されている解答速報はありません。</td></tr>`;
+                return;
+            }
+
+            // 新しい順にソート（年度降順 -> 日付降順）
+            exams.sort((a, b) => b.year - a.year || b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+
+            exams.forEach(ex => {
+                const univ = univs.find(u => u.id === ex.universityId);
+                const univName = univ ? univ.name : `ID: ${ex.universityId} (未登録)`;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${ex.date}</td>
+                    <td><strong>${ex.year}年度</strong></td>
+                    <td><span class="news-badge" style="background-color:#e8f9f7; color:#2b9d94;">${escapeHtml(univName)}</span></td>
+                    <td><strong>${escapeHtml(ex.title)}</strong></td>
+                    <td>
+                        <button class="action-badge badge-edit" onclick="editExam('${ex.id}')">編集</button>
+                        <button class="action-badge badge-delete" onclick="deleteExam('${ex.id}')">削除</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function showExamEditor() {
+            document.getElementById('editExamId').value = '';
+            document.getElementById('examTitle').value = '';
+            document.getElementById('examFileName').value = '';
+            document.getElementById('examYear').value = new Date().getFullYear();
+            document.getElementById('examUnivSelect').value = '';
+            quill.setContents([]);
+
+            document.getElementById('editorTitle').textContent = '解答速報の新規作成';
+            document.getElementById('examSection').style.display = 'none';
+            document.getElementById('examEditorView').style.display = 'block';
+        }
+
+        function hideExamEditor() {
+            document.getElementById('examSection').style.display = 'block';
+            document.getElementById('examEditorView').style.display = 'none';
+        }
+
+        function editExam(id) {
+            const exams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
+            const target = exams.find(ex => ex.id === id);
+            if (!target) return;
+
+            document.getElementById('editExamId').value = target.id;
+            document.getElementById('examTitle').value = target.title;
+            document.getElementById('examFileName').value = target.fileName || target.id;
+            document.getElementById('examYear').value = target.year || 2026;
+            document.getElementById('examUnivSelect').value = target.universityId;
+            
+            quill.clipboard.dangerouslyPasteHTML(target.content);
+
+            document.getElementById('editorTitle').textContent = '解答速報の編集';
+            document.getElementById('examSection').style.display = 'none';
+            document.getElementById('examEditorView').style.display = 'block';
+        }
+
+        function deleteExam(id) {
+            if (!confirm('この解答速報を削除しますか？')) return;
+
+            let exams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
+            exams = exams.filter(ex => ex.id !== id);
+            localStorage.setItem('vector_exam_news', JSON.stringify(exams));
+
+            renderExamTable();
+        }
+
+        // QuillエディタからクリーンにHTMLを取得する関数 (KaTeX重複レンダリング対策)
+        function getCleanHTMLFromEditor(quillInstance) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = quillInstance.root.innerHTML;
+            
+            const formulas = tempDiv.querySelectorAll('.ql-formula');
+            formulas.forEach(formulaEl => {
+                const tex = formulaEl.getAttribute('data-value');
+                formulaEl.innerHTML = ''; // レンダリング済みの中身を空にする
+                formulaEl.removeAttribute('contenteditable');
+                if (tex) {
+                    formulaEl.setAttribute('data-value', tex);
+                }
+            });
+            
+            const cursors = tempDiv.querySelectorAll('.ql-cursor');
+            cursors.forEach(c => c.remove());
+            
+            return tempDiv.innerHTML;
+        }
+
+        function getSnippet(htmlStr, maxLen = 120) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlStr;
+            const text = tempDiv.textContent || tempDiv.innerText || "";
+            return text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
+        }
+
+        function generateExamHTML(title, univName, year, date, content) {
+            return `<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>${title} - Vector学院</title>
+    <meta name="description" content="${title}の解答速報ページです。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- 数式ライブラリ (KaTeX) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"><\/script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../CSS/sample.css">
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8877046586680840" crossorigin="anonymous"><\/script>
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="../index.html" class="nav-logo">
+                <img src="c:\\\\Users\\\\nyann\\\\Downloads\\\\Code_Generated_Image.png" alt="Vevtor学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="../index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="../News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="../Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="../Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="../Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+        </nav>
+    </header>
+
+    <main class="dashboard-container" style="max-width: 800px; margin: 40px auto; padding: 20px;">
+        <div style="margin-bottom: 20px;">
+            <a href="../Exam_News.html" style="color: #2b9d94; text-decoration: none; font-weight: 600;">&larr; 解答速報一覧へ戻る</a>
+        </div>
+        
+        <div class="univ-info-card" style="padding: 40px; background: white; border-radius: 16px; border: 1px solid #eef7f6; box-shadow: 0 4px 20px rgba(0,0,0,0.02); overflow: visible;">
+            <div style="border-bottom: 1.5px solid #eef7f6; padding-bottom: 16px; margin-bottom: 24px; position: relative;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                    <span class="news-badge" style="background-color: #e8f9f7; color: #2b9d94; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block;">${univName}</span>
+                    <span class="news-badge" style="background-color: #eaf2ff; color: #2f6feb; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block;">${year}年度</span>
+                </div>
+                <h1 style="font-size: 26px; color: #1a6861; margin: 8px 0 0 0; line-height: 1.4;">${title}</h1>
+                <span style="font-size: 13px; color: #888; display: block; margin-top: 8px;">投稿日: ${date}</span>
+            </div>
+
+            <!-- Google Ad Unit (Middle Banner) -->
+            <div class="ad-container" style="margin: 20px 0 30px 0;">
+                <div class="ad-label">広告 / Advertisement</div>
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-8877046586680840"
+                     data-ad-slot="7777777777"
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+                <script>
+                     (adsbygoogle = window.adsbygoogle || []).push({});
+                <\/script>
+            </div>
+            
+            <div class="news-detail-body ql-editor" id="examBody" style="font-size: 16px; line-height: 1.8; color: #333; padding: 0;">
+                ${content}
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('examBody');
+            if (container) {
+                // KaTeXレンダリング
+                const formulas = container.querySelectorAll('.ql-formula');
+                formulas.forEach(formulaEl => {
+                    const tex = formulaEl.getAttribute('data-value');
+                    if (tex) {
+                        try {
+                            const isBlock = formulaEl.parentElement.tagName === 'P' && 
+                                            formulaEl.parentElement.textContent.trim() === formulaEl.textContent.trim();
+                            katex.render(tex, formulaEl, {
+                                throwOnError: false,
+                                displayMode: isBlock
+                            });
+                        } catch (err) {
+                            console.error('KaTeX error:', err);
+                        }
+                    }
+                });
+
+                if (typeof renderMathInElement === 'function') {
+                    renderMathInElement(container, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\\\(', right: '\\\\)', display: false},
+                            {left: '\\\\[', right: '\\\\]', display: true}
+                        ],
+                        throwOnError: false
+                    });
+                }
+            }
+        });
+    <\/script>
+    <!-- Sticky Bottom Ad Bar -->
+    <div class="sticky-ad-bar" id="stickyAdBar">
+        <div class="sticky-ad-inner">
+            <button class="sticky-ad-close" onclick="closeStickyAd()" title="広告を閉じる">&times;</button>
+            <ins class="adsbygoogle"
+                 style="display:block; min-height: 90px; width: 100%;"
+                 data-ad-client="ca-pub-8877046586680840"
+                 data-ad-slot="9999999999"
+                 data-ad-format="horizontal"
+                 data-full-width-responsive="false"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+                 function closeStickyAd() {
+                     const adBar = document.getElementById('stickyAdBar');
+                     if (adBar) {
+                         adBar.classList.add('hidden');
+                         document.body.style.paddingBottom = '0';
+                     }
+                 }
+            <\/script>
+        </div>
+    </div>
+</body>
+
+</html>`;
+        }
+
+        function saveExam(e) {
+            e.preventDefault();
+            const id = document.getElementById('editExamId').value;
+            const title = document.getElementById('examTitle').value.trim();
+            const fileName = document.getElementById('examFileName').value.trim();
+            const year = parseInt(document.getElementById('examYear').value, 10);
+            const universityId = document.getElementById('examUnivSelect').value;
+            const content = getCleanHTMLFromEditor(quill);
+            const snippet = getSnippet(content);
+            const today = new Date().toISOString().split('T')[0];
+            const filePath = 'Exams/' + fileName + '.html';
+
+            const univs = JSON.parse(localStorage.getItem('vector_universities') || '[]');
+            const univ = univs.find(u => u.id === universityId);
+            const univName = univ ? univ.name : 'その他';
+
+            let exams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
+
+            // 重複チェック
+            const duplicate = exams.find(ex => ex.id !== id && ex.fileName === fileName);
+            if (duplicate) {
+                alert('このファイル名は既に使用されています。別のファイル名を指定してください。');
+                return;
+            }
+
+            if (id) {
+                // 編集
+                const idx = exams.findIndex(ex => ex.id === id);
+                if (idx !== -1) {
+                    exams[idx].title = title;
+                    exams[idx].fileName = fileName;
+                    exams[idx].filePath = filePath;
+                    exams[idx].year = year;
+                    exams[idx].universityId = universityId;
+                    exams[idx].content = content;
+                    exams[idx].snippet = snippet;
+                    exams[idx].date = today;
+                }
+            } else {
+                // 新規作成
+                const newId = 'exam-' + Date.now();
+                exams.push({
+                    id: newId,
+                    title,
+                    fileName,
+                    filePath,
+                    year,
+                    universityId,
+                    content,
+                    snippet,
+                    date: today
+                });
+            }
+
+            // HTMLのエクスポート処理
+            const htmlContent = generateExamHTML(title, univName, year, today, content);
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', fileName + '.html');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            localStorage.setItem('vector_exam_news', JSON.stringify(exams));
+            
+            alert('解答速報データを保存し、個別用HTMLファイル（' + fileName + '.html）をダウンロードしました。\\n\\n【重要】\\nダウンロードされたファイルを、プロジェクトの「Exams/」フォルダ内に配置（コピー）してください。これにより、実際の個別ページとして正常に動作するようになります。');
+
+            hideExamEditor();
+            renderExamTable();
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+
+</html>

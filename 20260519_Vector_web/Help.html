@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>お問い合わせ・よくある質問 - Vector学院</title>
+    <meta name="description" content="Vector学院へのお問い合わせ・よくある質問のページです。疑問点はFAQでご確認いただき、解決しない場合はフォームよりご連絡ください。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/sample.css">
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="index.html" class="nav-logo">
+                <img src="c:\Users\nyann\Downloads\Code_Generated_Image.png" alt="Vector学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- ページヒーロー -->
+        <div class="help-page-hero">
+            <h1>お問い合わせ・よくある質問</h1>
+            <p class="hero-subtitle">Help &amp; FAQ</p>
+            <p class="hero-desc">
+                まずはよくある質問をご確認ください。解決しない場合は、<br>
+                ページ下部のフォームよりお問い合わせいただけます。通常2〜3営業日以内にご返信いたします。
+            </p>
+        </div>
+
+        <!-- FAQ セクション -->
+        <section class="help-section" id="faq-section">
+            <h2 class="help-section-title">💬 よくある質問</h2>
+            <div class="faq-tag-filters" id="faqTagFilters"></div>
+            <div class="faq-list" id="faqList">
+                <div class="faq-empty">読み込み中...</div>
+            </div>
+        </section>
+
+        <div class="help-divider"></div>
+
+        <!-- お問い合わせフォーム セクション -->
+        <section class="help-section" id="contact-section">
+            <h2 class="help-section-title">✉️ お問い合わせ</h2>
+            <p style="color:#666;font-size:14px;margin:-12px 0 24px;line-height:1.8;">
+                1日に送信できるお問い合わせは<strong>最大3件</strong>です。返信用メールアドレスのご入力は必須となります。
+            </p>
+
+            <!-- 上限超過メッセージ -->
+            <div class="contact-limit-info" id="contactLimitInfo"></div>
+            <!-- 残り件数バッジ -->
+            <div id="contactLimitBadgeWrap"></div>
+
+            <!-- フォーム -->
+            <div class="contact-form-card" id="contactFormCard">
+                <form id="contactForm" onsubmit="submitContact(event)">
+                    <div class="form-field">
+                        <label for="contactName">お名前 <span class="required-mark">必須</span></label>
+                        <input type="text" id="contactName" required placeholder="例：山田 太郎" maxlength="50">
+                    </div>
+                    <div class="form-field">
+                        <label for="contactEmail">返信用メールアドレス <span class="required-mark">必須</span></label>
+                        <input type="email" id="contactEmail" required placeholder="例：example@email.com">
+                    </div>
+                    <div class="form-field">
+                        <label for="contactCategory">カテゴリ</label>
+                        <select id="contactCategory">
+                            <option value="">選択してください（任意）</option>
+                            <option value="受講について">受講について</option>
+                            <option value="模擬試験について">模擬試験について</option>
+                            <option value="解答速報について">解答速報について</option>
+                            <option value="料金・支払いについて">料金・支払いについて</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="contactMessage">お問い合わせ内容 <span class="required-mark">必須</span></label>
+                        <textarea id="contactMessage" required placeholder="お問い合わせ内容を具体的にご記入ください。" maxlength="1000"></textarea>
+                        <div class="contact-char-count"><span id="charCount">0</span> / 1000</div>
+                    </div>
+                    <button type="submit" class="btn-login" id="contactSubmitBtn">送信する</button>
+                </form>
+            </div>
+
+            <!-- 送信完了メッセージ -->
+            <div class="contact-success-card" id="contactSuccessCard">
+                <div class="contact-success-icon">✅</div>
+                <h3>お問い合わせを受け付けました</h3>
+                <p>
+                    ご入力いただいたメールアドレス宛に確認のご連絡をする場合がございます。<br>
+                    通常2〜3営業日以内にご返信いたします。しばらくお待ちください。
+                </p>
+                <div id="remainingAfterSend" style="margin-top:24px;"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // =============================================
+        // 定数・設定
+        // =============================================
+        const FAQ_KEY     = 'vector_faq';
+        const CONTACT_KEY = 'vector_contacts';
+        const LIMIT_KEY   = 'contact_limit';
+        const DAILY_LIMIT = 3;
+
+        // デモ用初期FAQデータ
+        const DEFAULT_FAQ = [
+            {
+                id: 'demo-faq-1',
+                question: '受講のお申し込み方法を教えてください。',
+                answer: '<p>受講のお申し込みは、当サイトのトップページより「受講申込」ボタンをクリックし、必要事項をご入力ください。お申し込み後、ご登録のメールアドレス宛に確認メールをお送りします。</p>',
+                tags: ['受講について'],
+                date: '2026-05-20'
+            },
+            {
+                id: 'demo-faq-2',
+                question: '模擬試験の購入・ダウンロード方法を教えてください。',
+                answer: '<p>「模擬問題販売」ページよりお好みの問題集をお選びいただき、購入手続きにお進みください。お支払い完了後、ダウンロードリンクがメールにて送付されます。</p>',
+                tags: ['模擬試験', '購入について'],
+                date: '2026-05-20'
+            },
+            {
+                id: 'demo-faq-3',
+                question: '解答速報はいつ公開されますか？',
+                answer: '<p>試験実施日の翌日中を目安に「解答速報」ページへ掲載しております。最新情報はトップページの「お知らせ」もあわせてご確認ください。</p>',
+                tags: ['解答速報'],
+                date: '2026-05-20'
+            },
+            {
+                id: 'demo-faq-4',
+                question: 'お問い合わせへの返信はどのくらいかかりますか？',
+                answer: '<p>通常2〜3営業日以内にご返信いたします。土日祝日はお休みをいただいております。</p>',
+                tags: ['その他'],
+                date: '2026-05-20'
+            }
+        ];
+
+        let currentTag = 'すべて';
+
+        // =============================================
+        // FAQデータ管理・読み込み
+        // =============================================
+        function initFaqData() {
+            if (!localStorage.getItem(FAQ_KEY)) {
+                localStorage.setItem(FAQ_KEY, JSON.stringify(DEFAULT_FAQ));
+            }
+        }
+
+        function getFaqList() {
+            return JSON.parse(localStorage.getItem(FAQ_KEY) || '[]');
+        }
+
+        // =============================================
+        // タグフィルター・表示
+        // =============================================
+        function renderFaqTagFilters(faqList) {
+            const container = document.getElementById('faqTagFilters');
+            const allTags = new Set();
+            faqList.forEach(faq => (faq.tags || []).forEach(t => allTags.add(t.trim())));
+            const tags = ['すべて', ...Array.from(allTags).sort()];
+            container.innerHTML = tags.map(tag =>
+                `<button class="faq-tag-btn${tag === currentTag ? ' active' : ''}" onclick="filterFaq('${tag.replace(/'/g, "\\'")}')">${escapeHtml(tag)}</button>`
+            ).join('');
+        }
+
+        function filterFaq(tag) {
+            currentTag = tag;
+            const faqList = getFaqList();
+            renderFaqTagFilters(faqList);
+            renderFaqList(faqList);
+        }
+
+        function renderFaqList(faqList) {
+            const container = document.getElementById('faqList');
+            const filtered = currentTag === 'すべて'
+                ? faqList
+                : faqList.filter(faq => (faq.tags || []).map(t => t.trim()).includes(currentTag));
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="faq-empty">📭 該当するFAQはありません。</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(faq => `
+                <div class="faq-item" id="faq-${faq.id}">
+                    <div class="faq-question" onclick="toggleFaq('${faq.id}')">
+                        <div class="faq-question-text">
+                            <span class="faq-q-icon">Q</span>
+                            <span>${escapeHtml(faq.question)}</span>
+                        </div>
+                        <svg class="faq-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                            <div class="faq-answer-header">
+                                <span class="faq-a-label">A</span>
+                                <div class="faq-answer-body">${faq.answer}</div>
+                            </div>
+                            ${faq.tags && faq.tags.length > 0 ? `
+                            <div class="faq-tags">
+                                ${faq.tags.map(t => `<span class="faq-tag-label">${escapeHtml(t.trim())}</span>`).join('')}
+                            </div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleFaq(id) {
+            const item = document.getElementById('faq-' + id);
+            if (!item) return;
+            const isOpen = item.classList.contains('open');
+            document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+            if (!isOpen) item.classList.add('open');
+        }
+
+        // =============================================
+        // 送信制限 UI & ロジック
+        // =============================================
+        function getTodayStr() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function getLimitData() {
+            const defaultData = { date: getTodayStr(), count: 0 };
+            try {
+                const data = localStorage.getItem(LIMIT_KEY);
+                if (!data) return defaultData;
+                const parsed = JSON.parse(data);
+                if (parsed.date !== getTodayStr()) {
+                    return defaultData;
+                }
+                return parsed;
+            } catch (e) {
+                return defaultData;
+            }
+        }
+
+        function getRemainingCount() {
+            const limitData = getLimitData();
+            return Math.max(0, DAILY_LIMIT - limitData.count);
+        }
+
+        function incrementContactCount() {
+            const limitData = getLimitData();
+            limitData.count++;
+            localStorage.setItem(LIMIT_KEY, JSON.stringify(limitData));
+        }
+
+        function updateLimitUI() {
+            const remaining = getRemainingCount();
+            const limitInfo   = document.getElementById('contactLimitInfo');
+            const badgeWrap   = document.getElementById('contactLimitBadgeWrap');
+            const formCard    = document.getElementById('contactFormCard');
+
+            if (remaining <= 0) {
+                limitInfo.style.display = 'block';
+                limitInfo.innerHTML = '🔒 本日のお問い合わせ件数の上限（3件）に達しました。翌日以降に再度お試しください。';
+                badgeWrap.innerHTML = '';
+                formCard.style.opacity = '0.5';
+                formCard.style.pointerEvents = 'none';
+            } else {
+                limitInfo.style.display = 'none';
+                badgeWrap.innerHTML = `📨 本日あと <strong>${remaining}</strong> 件送信できます`;
+                formCard.style.opacity = '';
+                formCard.style.pointerEvents = '';
+            }
+        }
+
+        // =============================================
+        // お問い合わせ送信
+        // =============================================
+        function submitContact(event) {
+            event.preventDefault();
+
+            // 送信上限チェック
+            if (getRemainingCount() <= 0) {
+                updateLimitUI();
+                return;
+            }
+
+            // 入力値取得・バリデーション
+            const name    = document.getElementById('contactName').value.trim();
+            const email   = document.getElementById('contactEmail').value.trim();
+            const message = document.getElementById('contactMessage').value.trim();
+
+            if (!name || !email || !message) {
+                return; // required属性によるブラウザバリデーションで既に弾かれるが念のため
+            }
+
+            const contact = {
+                id:        'contact-' + Date.now(),
+                name:      name,
+                email:     email,
+                category:  document.getElementById('contactCategory').value,
+                message:   message,
+                date:      getTodayStr(),
+                timestamp: Date.now(),
+                status:    'unread'
+            };
+
+            // LocalStorageへ保存
+            try {
+                const contacts = JSON.parse(localStorage.getItem(CONTACT_KEY) || '[]');
+                contacts.unshift(contact);
+                localStorage.setItem(CONTACT_KEY, JSON.stringify(contacts));
+            } catch (e) {
+                // LocalStorageへの保存に失敗しても送信完了として扱う
+                console.warn('localStorage save failed:', e);
+            }
+
+            incrementContactCount();
+
+            // フォームを非表示にして完了カードを表示
+            const formCard    = document.getElementById('contactFormCard');
+            const badgeWrap   = document.getElementById('contactLimitBadgeWrap');
+            const limitInfo   = document.getElementById('contactLimitInfo');
+            const successCard = document.getElementById('contactSuccessCard');
+
+            formCard.style.display  = 'none';
+            badgeWrap.innerHTML     = '';
+            limitInfo.style.display = 'none';
+
+            successCard.style.removeProperty('display'); // CSSの display:none を除去
+            successCard.style.display = 'block';
+
+            const remaining = getRemainingCount();
+            document.getElementById('remainingAfterSend').innerHTML =
+                remaining > 0
+                    ? `<div class="contact-limit-badge">📨 本日あと ${remaining} 件送信できます</div>`
+                    : `<p style="font-size:13px;color:#888;margin:0;">本日のお問い合わせ上限（3件）に達しました。</p>`;
+
+            // ページトップへスクロール（送信完了を確認しやすくする）
+            document.getElementById('contact-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // =============================================
+        // 初期化
+        // =============================================
+        window.addEventListener('DOMContentLoaded', () => {
+            initFaqData();
+            const faqList = getFaqList();
+            renderFaqTagFilters(faqList);
+            renderFaqList(faqList);
+            updateLimitUI();
+
+            // 文字数カウント
+            const textarea = document.getElementById('contactMessage');
+            const counter  = document.getElementById('charCount');
+            textarea.addEventListener('input', () => {
+                counter.textContent = textarea.value.length;
+            });
+        });
+
+        // =============================================
+        // ユーティリティ
+        // =============================================
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str || ''));
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

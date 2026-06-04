@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>解答速報 - Vector学院</title>
+    <meta name="description" content="Vector学院の解答速報・解説ページです。東大、京大、早大、慶大などの解答・解説を掲載しています。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- 数式ライブラリ (KaTeX) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/sample.css">
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8877046586680840" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="index.html" class="nav-logo">
+                <img src="c:\Users\nyann\Downloads\Code_Generated_Image.png" alt="Vevtor学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+            <a href="Admin_login.html" class="nav-button">
+                <p>管理者用ログイン</p>
+                <p>Admin Login</p>
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        <h1 style="text-align: center; color: #2b9d94; margin-bottom: 10px;">解答速報</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 40px; font-size: 15px;">大学入試等の解答速報および問題解説をいち早く公開します。</p>
+        <p style="text-align: center; color: #666; margin-bottom: 40px; font-size: 15px;"> 注意：解答速報の投稿には何回ものチェックを行っておりますが、誤りが含まれている場合があります。
+            その際はお問い合わせフォームから誤りについてご連絡いただきますようお願いいたします。
+        </p>
+
+        <!-- Google Ad Unit (Top Banner) -->
+        <div class="ad-container">
+            <div class="ad-label">広告 / Advertisement</div>
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-8877046586680840"
+                 data-ad-slot="3333333333"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+        </div>
+
+        <!-- 最近投稿した解答速報セクション -->
+        <section style="margin-bottom: 50px;">
+            <h2 style="color: #1a6861; font-size: 22px; margin-bottom: 20px; border-left: 4px solid #49cfc4; padding-left: 12px; text-align: left;">最近投稿した解答速報</h2>
+            <div class="exam-news-list" id="recentExamsContainer">
+                <!-- JSで最近の3件を動的描画 -->
+            </div>
+        </section>
+
+        <!-- 大学毎のタブセクション -->
+        <section style="margin-bottom: 40px;">
+            <h2 style="color: #1a6861; font-size: 22px; margin-bottom: 20px; border-left: 4px solid #49cfc4; padding-left: 12px; text-align: left;">各大学の解答解説</h2>
+            
+            <!-- 大学タブメニュー -->
+            <div class="exam-tabs-container">
+                <ul class="exam-tabs" id="univTabs">
+                    <!-- JSで大学タブを動的描画 -->
+                </ul>
+            </div>
+
+            <!-- タブ個別コンテンツ表示エリア -->
+            <div id="univFileContent">
+                <!-- HTMLファイルから読み込まれた内容が挿入されます -->
+            </div>
+
+            <!-- その大学の解答速報リスト -->
+            <div style="margin-top: 30px;">
+                <h3 style="color: #2b9d94; font-size: 18px; margin-bottom: 16px; text-align: left;" id="univExamsTitle">解答速報一覧</h3>
+                <div id="univExamsContainer">
+                    <!-- JSで対象大学の解答速報を年度別に動的描画 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Google Ad Unit (Bottom Banner) -->
+        <div class="ad-container">
+            <div class="ad-label">広告 / Advertisement</div>
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-8877046586680840"
+                 data-ad-slot="4444444444"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+        </div>
+    </main>
+
+    <!-- 解答速報詳細モーダル（個別ページ化に伴い廃止） -->
+
+    <script>
+        // 初期大学プリセット
+        const defaultUniversities = [
+            { id: 'utokyo', name: '東京大学', filePath: 'Exams/utokyo.html' },
+            { id: 'kyoto', name: '京都大学', filePath: 'Exams/kyoto.html' },
+            { id: 'waseda', name: '早稲田大学', filePath: 'Exams/waseda.html' },
+            { id: 'keio', name: '慶應義塾大学', filePath: 'Exams/keio.html' }
+        ];
+
+        // 初期解答速報プリセット
+        const defaultExams = [
+            {
+                id: 'exam-demo-1',
+                title: '東京大学 理系数学 第1問 解答速報',
+                universityId: 'utokyo',
+                year: 2026,
+                fileName: 'exam-demo-1',
+                filePath: 'Exams/exam-demo-1.html',
+                content: `<p>東京大学2026年理系数学第1問の解答速報です。</p><p>本問は、微分法と不等式の証明に関する標準的な融合問題でした。</p><p>与えられた関数を $f(x)$ とおきます：</p><p>$$f(x) = e^x - (1 + x + \\frac{1}{2}x^2)$$</p><p>これについて導関数を求めると、以下のようになります。</p><p>$$f'(x) = e^x - (1 + x)$$</p><p>$$f''(x) = e^x - 1$$</p><p>$x > 0$ において $f''(x) > 0$ であるため、導関数 $f'(x)$ は単調増加となります。$f'(0) = 0$ より、 $x > 0$ で $f'(x) > 0$ が成り立ちます。したがって $f(x)$ も単調増加となり、 $f(0) = 0$ から次式が証明されます。</p><p>$$e^x > 1 + x + \\frac{1}{2}x^2 \\quad (x > 0)$$</p><p><span style="color: #dc3545; font-weight: bold;">ポイント:</span> マクローリン展開の第3項までを取り出した不等式評価は頻出です。微分を繰り返して確実に得点しましょう。</p>`,
+                snippet: '東京大学2026年理系数学第1問の解答速報です。本問は微分法と不等式の証明に関する標準的な問題でした。',
+                date: '2026-05-25'
+            },
+            {
+                id: 'exam-demo-2',
+                title: '早稲田大学 理工学部 数学 第3問 解説',
+                universityId: 'waseda',
+                year: 2026,
+                fileName: 'exam-demo-2',
+                filePath: 'Exams/exam-demo-2.html',
+                content: `<p>早稲田大学2026年理工学部数学第3問の解答解説です。</p><p>本問は、定積分を用いた極限（区分求積法）の応用問題でした。</p><p>極限値 $S$ は以下のように定式化されます。</p><p>$$S = \\lim_{n \\to \\infty} \\frac{1}{n} \\sum_{k=1}^{n} \\cos\\left(\\frac{k\\pi}{2n}\\right)$$</p><p>これを定積分に書き直すと、</p><p>$$S = \\int_{0}^{1} \\cos\\left(\\frac{\\pi}{2}x\\right) dx$$</p><p>となります。積分を実行すると、</p><p>$$S = \\left[ \\frac{2}{\\pi} \\sin\\left(\\frac{\\pi}{2}x\\right) \\right]_{0}^{1} = \\frac{2}{\\pi}$$</p><p>が得られます。</p>`,
+                snippet: '早稲田大学2026年理工学部数学第3問の解答解説です。定積分を用いた極限（区分求積法）の応用問題でした。',
+                date: '2026-05-24'
+            }
+        ];
+
+        let allExams = [];
+        let allUniversities = [];
+        let activeUnivId = '';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initLocalStorage();
+            loadData();
+            renderRecentExams();
+            renderUnivTabs();
+            
+            // デフォルトで最初の大学を選択
+            if (allUniversities.length > 0) {
+                selectUnivTab(allUniversities[0].id);
+            }
+
+            // URLクエリパラメータの解析 (?id=XXX の自動展開)
+            const urlParams = new URLSearchParams(window.location.search);
+            const examId = urlParams.get('id');
+            if (examId) {
+                openExamDetail(examId);
+            }
+        });
+
+        // LocalStorage初期化
+        function initLocalStorage() {
+            if (!localStorage.getItem('vector_universities')) {
+                localStorage.setItem('vector_universities', JSON.stringify(defaultUniversities));
+            }
+            if (!localStorage.getItem('vector_exam_news')) {
+                localStorage.setItem('vector_exam_news', JSON.stringify(defaultExams));
+            } else {
+                // 年度・ファイル名・ファイルパスマイグレーション
+                try {
+                    let exams = JSON.parse(localStorage.getItem('vector_exam_news'));
+                    let modified = false;
+                    exams.forEach(ex => {
+                        if (!ex.hasOwnProperty('year')) {
+                            ex.year = 2026;
+                            modified = true;
+                        }
+                        if (!ex.hasOwnProperty('fileName')) {
+                            ex.fileName = ex.id;
+                            modified = true;
+                        }
+                        if (!ex.hasOwnProperty('filePath')) {
+                            ex.filePath = 'Exams/' + ex.fileName + '.html';
+                            modified = true;
+                        }
+                    });
+                    if (modified) {
+                        localStorage.setItem('vector_exam_news', JSON.stringify(exams));
+                    }
+                } catch(e) {
+                    console.error('Migration error:', e);
+                }
+            }
+        }
+
+        // データロード
+        function loadData() {
+            allUniversities = JSON.parse(localStorage.getItem('vector_universities') || '[]');
+            allExams = JSON.parse(localStorage.getItem('vector_exam_news') || '[]');
+            
+            // 新しい順にソート（年度降順 -> 日付降順）
+            allExams.sort((a, b) => b.year - a.year || b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+        }
+
+        // 最近の解答速報のレンダリング
+        function renderRecentExams() {
+            const container = document.getElementById('recentExamsContainer');
+            container.innerHTML = '';
+
+            // 最新の3件を表示
+            const recent = allExams.slice(0, 3);
+            if (recent.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 30px; background: white; border-radius: 8px;">投稿された解答速報はまだありません。</div>`;
+                return;
+            }
+
+            recent.forEach(ex => {
+                const univ = allUniversities.find(u => u.id === ex.universityId);
+                const univName = univ ? univ.name : 'その他';
+
+                const card = document.createElement('a');
+                card.className = 'exam-news-card';
+                card.href = ex.filePath || ('Exams/' + ex.id + '.html');
+                card.style.textDecoration = 'none';
+                card.innerHTML = `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <span class="univ-tag" style="font-size: 11px; margin:0;">${escapeHtml(univName)}</span>
+                            <span style="font-size: 11px; color:#888; font-weight:600;">${ex.year}年度</span>
+                        </div>
+                        <h3 style="font-size: 16px; margin: 0 0 10px 0;">${escapeHtml(ex.title)}</h3>
+                    </div>
+                    <div class="exam-news-card-footer">
+                        <span>${ex.date}</span>
+                        <span style="color: #2b9d94; font-weight:600;">解説を見る &rarr;</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 大学タブのレンダリング
+        function renderUnivTabs() {
+            const tabsContainer = document.getElementById('univTabs');
+            tabsContainer.innerHTML = '';
+
+            allUniversities.forEach(u => {
+                const li = document.createElement('li');
+                const btn = document.createElement('button');
+                btn.className = 'exam-tab-button';
+                btn.id = `tabBtn-${u.id}`;
+                btn.textContent = u.name;
+                btn.onclick = () => selectUnivTab(u.id);
+                li.appendChild(btn);
+                tabsContainer.appendChild(li);
+            });
+        }
+
+        // 大学タブの選択
+        function selectUnivTab(univId) {
+            activeUnivId = univId;
+            
+            // アクティブタブのスタイル切り替え
+            const buttons = document.querySelectorAll('.exam-tab-button');
+            buttons.forEach(btn => btn.classList.remove('active-tab'));
+            
+            const activeBtn = document.getElementById(`tabBtn-${univId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active-tab');
+            }
+
+            const univ = allUniversities.find(u => u.id === univId);
+            if (!univ) return;
+
+            // ファイル読み込み (fetch)
+            const filePath = univ.filePath;
+            const contentArea = document.getElementById('univFileContent');
+            
+            contentArea.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">コンテンツを読み込み中...</div>';
+
+            fetch(filePath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('File not found');
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    contentArea.innerHTML = html;
+                })
+                .catch(err => {
+                    console.warn(`Could not load separate file: ${filePath}. Rendering fallback.`, err);
+                    // 物理ファイルがない場合のフォールバック表示
+                    contentArea.innerHTML = `
+                        <div class="univ-info-card">
+                            <h2>${escapeHtml(univ.name)} 解答速報</h2>
+                            <p class="univ-description">
+                                ${escapeHtml(univ.name)}の試験科目に関する解答速報・解説を順次公開予定です。詳細につきましては、当学院の解答速報一覧をご覧ください。
+                            </p>
+                        </div>
+                    `;
+                })
+                .finally(() => {
+                    // 大学に紐づく解答速報の一覧を表示
+                    renderUnivExams(univId, univ.name);
+                });
+        }
+
+        // 特定大学の解答速報をレンダリング（年度ごとにグループ化して表示）
+        function renderUnivExams(univId, univName) {
+            const container = document.getElementById('univExamsContainer');
+            const titleEl = document.getElementById('univExamsTitle');
+            container.innerHTML = '';
+
+            titleEl.textContent = `${univName}の解答速報一覧`;
+
+            const filtered = allExams.filter(ex => ex.universityId === univId);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #888; padding: 40px; background: white; border-radius: 12px; border: 1px dashed #dcefe0; width: 100%; box-sizing: border-box;">
+                        ${escapeHtml(univName)}に関する解答速報は現在準備中です。
+                    </div>`;
+                return;
+            }
+
+            // 年度でグループ化
+            const yearGroups = {};
+            filtered.forEach(ex => {
+                const year = ex.year || 2026;
+                if (!yearGroups[year]) {
+                    yearGroups[year] = [];
+                }
+                yearGroups[year].push(ex);
+            });
+
+            // 年度の降順でソートして描画
+            const sortedYears = Object.keys(yearGroups).sort((a, b) => b - a);
+
+            sortedYears.forEach(year => {
+                // 年度見出しの追加
+                const yearHeader = document.createElement('h4');
+                yearHeader.style.color = '#1a6861';
+                yearHeader.style.fontSize = '18px';
+                yearHeader.style.margin = '28px 0 12px 0';
+                yearHeader.style.borderBottom = '1.5px solid #dcefe0';
+                yearHeader.style.paddingBottom = '6px';
+                yearHeader.style.textAlign = 'left';
+                yearHeader.textContent = `${year}年度`;
+                container.appendChild(yearHeader);
+
+                // カード用グリッドコンテナの追加
+                const listDiv = document.createElement('div');
+                listDiv.className = 'exam-news-list';
+                listDiv.style.marginTop = '0';
+                listDiv.style.marginBottom = '20px';
+
+                yearGroups[year].forEach(ex => {
+                    const card = document.createElement('a');
+                    card.className = 'exam-news-card';
+                    card.href = ex.filePath || ('Exams/' + ex.id + '.html');
+                    card.style.textDecoration = 'none';
+                    card.innerHTML = `
+                        <div>
+                            <h3 style="font-size: 16px; margin: 0 0 10px 0;">${escapeHtml(ex.title)}</h3>
+                            <p style="font-size: 13px; color: #666; line-height: 1.5; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(ex.snippet || '')}</p>
+                        </div>
+                        <div class="exam-news-card-footer">
+                            <span>${ex.date}</span>
+                            <span style="color: #2b9d94; font-weight:600;">解説を見る &rarr;</span>
+                        </div>
+                    `;
+                    listDiv.appendChild(card);
+                });
+
+                container.appendChild(listDiv);
+            });
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+
+    <!-- Sticky Bottom Ad Bar -->
+    <div class="sticky-ad-bar" id="stickyAdBar">
+        <div class="sticky-ad-inner">
+            <button class="sticky-ad-close" onclick="closeStickyAd()" title="広告を閉じる">&times;</button>
+            <ins class="adsbygoogle"
+                 style="display:block; min-height: 90px; width: 100%;"
+                 data-ad-client="ca-pub-8877046586680840"
+                 data-ad-slot="9999999999"
+                 data-ad-format="horizontal"
+                 data-full-width-responsive="false"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+                 function closeStickyAd() {
+                     const adBar = document.getElementById('stickyAdBar');
+                     if (adBar) {
+                         adBar.classList.add('hidden');
+                         document.body.style.paddingBottom = '0';
+                     }
+                 }
+            </script>
+        </div>
+    </div>
+</body>
+
+</html>

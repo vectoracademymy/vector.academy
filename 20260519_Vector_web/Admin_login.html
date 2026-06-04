@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>管理者ログイン - Vector学院</title>
+    <meta name="description" content="Vector学院の管理者ログインページです。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/sample.css">
+    <script>
+        // 既にログイン済みの場合はダッシュボードへリダイレクト
+        if (sessionStorage.getItem('admin_auth') === 'true') {
+            window.location.replace('Admin_Dashboard.html');
+        }
+    </script>
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <style>
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Button states */
+        .btn-login:disabled {
+            background: #a9dfda;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none !important;
+        }
+
+        /* OTP Input Grid */
+        .otp-inputs {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 15px 0;
+            width: 100%;
+        }
+
+        .otp-input-digit {
+            flex: 1;
+            max-width: 48px;
+            height: 52px;
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            border: 1.5px solid #dcefe0;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            color: #333;
+            min-width: 0;
+        }
+
+        .otp-input-digit:focus {
+            outline: none;
+            border-color: #49cfc4;
+            box-shadow: 0 0 0 3px rgba(73, 207, 196, 0.2);
+            background-color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="index.html" class="nav-logo">
+                <img src="c:\Users\nyann\Downloads\Code_Generated_Image.png" alt="Vevtor学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+            <a href="Admin_login.html" class="nav-button">
+                <p>管理者用ログイン</p>
+                <p>Admin Login</p>
+            </a>
+        </nav>
+    </header>
+
+    <main class="login-container">
+        <div class="login-card" id="loginCard">
+            <!-- パスワード入力画面 -->
+            <div id="passwordView">
+                <h2>管理者用ログイン</h2>
+                <p class="subtitle">Administrator Login</p>
+                <p style="font-size: 13.5px; color: #666; margin-bottom: 24px; line-height: 1.6;">
+                    関係者以外のログインを固く禁じます。<br>
+                    パスワード認証後、専用アドレスにワンタイムパスワードが送信されます。
+                </p>
+
+                <form id="passwordForm" onsubmit="submitPassword(event)">
+                    <div class="form-group">
+                        <label for="password">パスワード</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" required autocomplete="current-password" placeholder="パスワードを入力してください">
+                            <button type="button" class="toggle-password" id="togglePassword" onclick="togglePasswordVisibility()" aria-label="パスワードの表示切り替え">
+                                👁️
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="error-message" id="errorMessage">
+                        ⚠️ パスワードが正しくありません。
+                    </div>
+                    <div id="lockMessage" style="display: none; font-size: 13px; color: #df4759; text-align: center; margin-bottom: 12px; font-weight: 600;">
+                        🔒 <span id="lockCountdown">10</span>秒後に再入力できます。
+                    </div>
+
+                    <button type="submit" class="btn-login" id="btnSendOtp">
+                        <span id="btnSendOtpText">ワンタイムパスワードを送信</span>
+                        <span class="spinner" id="btnSendOtpSpinner" style="display: none;"></span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- OTP入力画面 (初期は非表示) -->
+            <div id="otpView" style="display: none;">
+                <h2>セキュリティ認証</h2>
+                <p class="subtitle">One-Time Password Verification</p>
+                <p style="font-size: 13.5px; color: #666; margin-bottom: 20px; line-height: 1.6;">
+                    専用メールアドレス宛に送信された<br>6桁のワンタイムパスワードを入力してください。
+                </p>
+                <div style="font-size: 13px; color: #2b9d94; background: #e8f9f7; padding: 10px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; text-align: center; border: 1px solid rgba(73, 207, 196, 0.2);">
+                    宛先: vector.academy.mymail@gmail.com
+                </div>
+
+                <form id="otpForm" onsubmit="submitOtp(event)">
+                    <div class="form-group">
+                        <label style="margin-bottom: 8px; display: block;">認証コード (6桁)</label>
+                        <div class="otp-inputs">
+                            <input type="text" class="otp-input-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required id="otp0">
+                            <input type="text" class="otp-input-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required id="otp1">
+                            <input type="text" class="otp-input-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required id="otp2">
+                            <input type="text" class="otp-input-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required id="otp3">
+                            <input type="text" class="otp-input-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required id="otp4">
+                            <input type="text" class="otp-input-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required id="otp5">
+                        </div>
+                    </div>
+
+                    <div class="error-message" id="otpErrorMessage">
+                        ⚠️ 認証コードが正しくないか、有効期限が切れています。
+                    </div>
+
+                    <button type="submit" class="btn-login" id="btnVerify">ログイン</button>
+                    
+                    <div class="resend-container" style="margin-top: 24px; font-size: 13.5px; color: #666; text-align: center;">
+                        <span id="timerText">有効期限: <strong id="timerCount" style="color: #df4759; font-size: 14px;">05:00</strong></span>
+                        <div style="margin-top: 12px;">
+                            <button type="button" id="btnResend" onclick="resendOtp()" disabled style="background: none; border: none; color: #888; text-decoration: underline; cursor: not-allowed; font-size: 13px; font-weight: 500; font-family: inherit; padding: 4px 8px;">
+                                パスワードを再送信する
+                            </button>
+                            <span id="resendCountdown" style="display: none; color: #888; font-size: 12px;"> (再送信まで 60秒)</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px; border-top: 1px solid #eef7f6; padding-top: 16px; text-align: center;">
+                        <a href="#" onclick="goBackToPassword(event)" style="color: #2b9d94; text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">&larr; パスワード入力に戻る</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==========================================
+        // EmailJS 設定（本番メール送信用）
+        // ==========================================
+        // 実際にメールを送るには、無料のEmailJS（https://www.emailjs.com/）アカウントを作成し、
+        // 取得したキーを以下に入力してください。
+        const EMAILJS_CONFIG = {
+            publicKey: "Co0G4LHOkrSEqfxfF",      // EmailJSのPublic Key
+            serviceId: "service_0usxitl",      // EmailJSのService ID
+            templateId: "template_1nrenlm"     // EmailJSのTemplate ID
+        };
+
+        // EmailJS の初期化
+        if (EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey !== "YOUR_PUBLIC_KEY") {
+            emailjs.init({
+                publicKey: EMAILJS_CONFIG.publicKey
+            });
+        }
+
+        let currentOtp = '';
+        let otpExpiryTime = 0;
+        let countdownInterval = null;
+        let resendTimeout = null;
+        let resendSecRemaining = 0;
+        let lockTimeout = null;
+        let lockSecRemaining = 0;
+
+        // パスワードの表示・非表示切り替え
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleButton = document.getElementById('togglePassword');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleButton.textContent = '🔒';
+            } else {
+                passwordInput.type = 'password';
+                toggleButton.textContent = '👁️';
+            }
+        }
+
+        // SHA-256ハッシュ値の計算
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        // パスワードの送信（第一段階）
+        async function submitPassword(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+            const loginCard = document.getElementById('loginCard');
+            const btnSendOtp = document.getElementById('btnSendOtp');
+            const btnSendOtpText = document.getElementById('btnSendOtpText');
+            const btnSendOtpSpinner = document.getElementById('btnSendOtpSpinner');
+
+            // 送信状態UIに変更
+            btnSendOtp.disabled = true;
+            btnSendOtpText.textContent = 'パスワードを検証中...';
+            btnSendOtpSpinner.style.display = 'inline-block';
+            errorMessage.style.display = 'none';
+
+            // ハッシュ計算
+            const passwordHash = await sha256(password);
+            const correctHash = '6fc08ef99cb710523242c676568cd6caa03f9bacfd64fd7c53152c1fcf8437fc'; // 20vector26
+
+            // 通信シミュレーション（1.2秒ウェイト）
+            await new Promise(resolve => setTimeout(resolve, 1200));
+
+            if (passwordHash === correctHash) {
+                // 認証成功 -> OTP生成と送信
+                await generateAndSendOtp();
+                
+                // 画面遷移
+                document.getElementById('passwordView').style.display = 'none';
+                document.getElementById('otpView').style.display = 'block';
+                
+                // OTP入力の初期化
+                clearOtpInputs();
+            } else {
+                // 認証失敗 -> 10秒ロックダウン
+                btnSendOtpSpinner.style.display = 'none';
+                errorMessage.style.display = 'flex';
+                loginCard.classList.add('shake');
+                loginCard.addEventListener('animationend', () => {
+                    loginCard.classList.remove('shake');
+                }, { once: true });
+
+                document.getElementById('password').value = '';
+
+                // ロックダウン開始
+                startPasswordLockdown(btnSendOtp, btnSendOtpText);
+            }
+        }
+
+        // パスワード誤入力後のロックダウン制御（秒数指定可、デフォルト10秒）
+        function startPasswordLockdown(btn, btnText, remainSec = 10) {
+            const lockMessage = document.getElementById('lockMessage');
+            const lockCountdown = document.getElementById('lockCountdown');
+            const passwordInput = document.getElementById('password');
+
+            // ロック解除時刻を sessionStorage に保存（ページ更新対策）
+            const unlockAt = Date.now() + remainSec * 1000;
+            sessionStorage.setItem('pw_lock_until', unlockAt);
+
+            lockSecRemaining = remainSec;
+            btn.disabled = true;
+            passwordInput.disabled = true;
+            passwordInput.style.cursor = 'not-allowed';
+            btnText.textContent = `再入力まで ${lockSecRemaining}秒`;
+            lockMessage.style.display = 'block';
+            lockCountdown.textContent = lockSecRemaining;
+
+            if (lockTimeout) clearInterval(lockTimeout);
+            lockTimeout = setInterval(() => {
+                lockSecRemaining--;
+                lockCountdown.textContent = lockSecRemaining;
+                btnText.textContent = `再入力まで ${lockSecRemaining}秒`;
+                if (lockSecRemaining <= 0) {
+                    clearInterval(lockTimeout);
+                    sessionStorage.removeItem('pw_lock_until');
+                    btn.disabled = false;
+                    passwordInput.disabled = false;
+                    passwordInput.style.cursor = '';
+                    btnText.textContent = 'ワンタイムパスワードを送信';
+                    lockMessage.style.display = 'none';
+                    passwordInput.focus();
+                }
+            }, 1000);
+        }
+
+        // OTP生成と送信
+        async function generateAndSendOtp() {
+            // 6桁のランダムなコード
+            currentOtp = Math.floor(100000 + Math.random() * 900000).toString();
+            // 5分間の有効期限
+            otpExpiryTime = Date.now() + 5 * 60 * 1000;
+
+            // 各種制御リセットと開始
+            startCountdown();
+            startResendTimeout();
+
+            // 実際にメール送信を試みる
+            if (EMAILJS_CONFIG.publicKey === "YOUR_PUBLIC_KEY" || !EMAILJS_CONFIG.publicKey) {
+                // キーが設定されていない場合の開発者用・テスト用フォールバック
+                alert("【設定案内】\n実際にメールを送信するには、Admin_login.html のスクリプト上部にある EMAILJS_CONFIG に、EmailJS（無料）で取得したご自身のキーを設定してください。\n\n（※デモ動作検証用のワンタイムパスワードはこちらです： " + currentOtp + "）");
+            } else {
+                // EmailJSを利用して実際のメールを送信
+                try {
+                    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+                        to_email: "vector.academy.mymail@gmail.com",
+                        otp_code: currentOtp
+                    });
+                    console.log("OTP email sent successfully via EmailJS.");
+                } catch (error) {
+                    console.error("Failed to send OTP email:", error);
+                    alert("メールの送信に失敗しました。設定を確認してください。\n（デモ用一時コード: " + currentOtp + "）");
+                }
+            }
+        }
+
+        // カウントダウンタイマー制御
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            const timerCount = document.getElementById('timerCount');
+            
+            function updateTimer() {
+                const diff = otpExpiryTime - Date.now();
+                if (diff <= 0) {
+                    clearInterval(countdownInterval);
+                    timerCount.textContent = '期限切れ';
+                    return;
+                }
+                
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                timerCount.textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            updateTimer();
+            countdownInterval = setInterval(updateTimer, 1000);
+        }
+
+        // 再送信ボタンのクールダウン制御
+        function startResendTimeout() {
+            const btnResend = document.getElementById('btnResend');
+            const resendCountdown = document.getElementById('resendCountdown');
+            
+            btnResend.disabled = true;
+            btnResend.style.color = '#888';
+            btnResend.style.cursor = 'not-allowed';
+            resendCountdown.style.display = 'inline';
+            
+            resendSecRemaining = 60;
+            resendCountdown.textContent = ` (再送信まで ${resendSecRemaining}秒)`;
+            
+            if (resendTimeout) clearInterval(resendTimeout);
+            
+            resendTimeout = setInterval(() => {
+                resendSecRemaining--;
+                if (resendSecRemaining <= 0) {
+                    clearInterval(resendTimeout);
+                    btnResend.disabled = false;
+                    btnResend.style.color = '#2b9d94';
+                    btnResend.style.cursor = 'pointer';
+                    resendCountdown.style.display = 'none';
+                } else {
+                    resendCountdown.textContent = ` (再送信まで ${resendSecRemaining}秒)`;
+                }
+            }, 1000);
+        }
+
+        // 再送信処理
+        async function resendOtp() {
+            await generateAndSendOtp();
+            alert('ワンタイムパスワードを再送信しました。（vector.academy.mymail@gmail.com宛）');
+        }
+
+        // パスワード入力画面に戻る処理
+        function goBackToPassword(event) {
+            event.preventDefault();
+            
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (resendTimeout) clearInterval(resendTimeout);
+            
+            document.getElementById('passwordView').style.display = 'block';
+            document.getElementById('otpView').style.display = 'none';
+            
+            const btnSendOtp = document.getElementById('btnSendOtp');
+            const btnSendOtpText = document.getElementById('btnSendOtpText');
+            const btnSendOtpSpinner = document.getElementById('btnSendOtpSpinner');
+            
+            btnSendOtp.disabled = false;
+            btnSendOtpText.textContent = 'ワンタイムパスワードを送信';
+            btnSendOtpSpinner.style.display = 'none';
+            
+            document.getElementById('password').value = '';
+            setTimeout(() => {
+                document.getElementById('password').focus();
+            }, 50);
+        }
+
+        // OTP検証・ログイン完了処理（第二段階）
+        async function submitOtp(event) {
+            event.preventDefault();
+            
+            const otpCode = getOtpCode();
+            const otpErrorMessage = document.getElementById('otpErrorMessage');
+            const loginCard = document.getElementById('loginCard');
+
+            // 有効期限の確認
+            const isExpired = Date.now() > otpExpiryTime;
+
+            if (otpCode === currentOtp && !isExpired) {
+                // 認証成功 -> セッションストレージにフラグをセットして遷移
+                sessionStorage.setItem('admin_auth', 'true');
+                window.location.href = 'Admin_Dashboard.html';
+            } else {
+                // 認証失敗
+                otpErrorMessage.style.display = 'flex';
+                loginCard.classList.add('shake');
+                loginCard.addEventListener('animationend', () => {
+                    loginCard.classList.remove('shake');
+                }, { once: true });
+
+                clearOtpInputs();
+            }
+        }
+
+        // OTP入力欄の自動フォーカス移動制御
+        function initOtpInputs() {
+            const inputs = document.querySelectorAll('.otp-input-digit');
+            inputs.forEach((input, index) => {
+                input.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    if (e.target.value.length === 1 && index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                });
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+                        inputs[index - 1].focus();
+                    }
+                });
+
+                input.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const text = (e.clipboardData || window.clipboardData).getData('text');
+                    const numbers = text.replace(/[^0-9]/g, '').substring(0, 6);
+                    
+                    if (numbers.length > 0) {
+                        const digits = numbers.split('');
+                        inputs.forEach((inp, idx) => {
+                            if (digits[idx]) inp.value = digits[idx];
+                        });
+                        const focusIdx = Math.min(digits.length, inputs.length - 1);
+                        inputs[focusIdx].focus();
+                    }
+                });
+            });
+        }
+
+        function getOtpCode() {
+            let code = '';
+            document.querySelectorAll('.otp-input-digit').forEach(inp => {
+                code += inp.value;
+            });
+            return code;
+        }
+
+        function clearOtpInputs() {
+            document.querySelectorAll('.otp-input-digit').forEach(inp => {
+                inp.value = '';
+            });
+            const firstInput = document.querySelector('.otp-input-digit');
+            if (firstInput) firstInput.focus();
+        }
+
+        // ロード時初期化
+        window.addEventListener('DOMContentLoaded', () => {
+            initOtpInputs();
+
+            // ページ更新後もロックダウン状態を復元
+            const pwLockUntil = sessionStorage.getItem('pw_lock_until');
+            if (pwLockUntil) {
+                const remainMs = parseInt(pwLockUntil) - Date.now();
+                if (remainMs > 0) {
+                    const btn = document.getElementById('btnSendOtp');
+                    const btnText = document.getElementById('btnSendOtpText');
+                    const errorMessage = document.getElementById('errorMessage');
+                    errorMessage.style.display = 'flex';
+                    startPasswordLockdown(btn, btnText, Math.ceil(remainMs / 1000));
+                } else {
+                    sessionStorage.removeItem('pw_lock_until');
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
