@@ -23,7 +23,12 @@ function getGitHubSettings() {
     try {
         const settings = localStorage.getItem(GITHUB_SETTINGS_KEY);
         if (settings) {
-            return JSON.parse(settings);
+            const parsed = JSON.parse(settings);
+            if (parsed && parsed.token) {
+                // トークンから英数字とアンダースコア以外のゴミ文字を強制的に排除
+                parsed.token = parsed.token.replace(/[^a-zA-Z0-9_]/g, '');
+            }
+            return parsed;
         }
     } catch (e) {
         console.error('Error reading GitHub settings:', e);
@@ -58,7 +63,7 @@ async function pushToGitHub(path, content, commitMessage) {
         const getRes = await fetch(`${apiUrl}?ref=${branch}`, {
             method: 'GET',
             headers: {
-                'Authorization': `token ${token}`,
+                'Authorization': `Bearer ${token}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Cache-Control': 'no-cache'
             }
@@ -66,8 +71,14 @@ async function pushToGitHub(path, content, commitMessage) {
         if (getRes.ok) {
             const fileData = await getRes.json();
             sha = fileData.sha;
+        } else if (getRes.status !== 404) {
+            const errData = await getRes.json().catch(() => ({}));
+            throw new Error(`GitHub API returned ${getRes.status}: ${errData.message || 'Cannot retrieve file metadata'}`);
         }
     } catch (e) {
+        if (e.message.includes('GitHub API returned')) {
+            throw e;
+        }
         console.warn('Failed to retrieve file SHA (file might be new):', e);
     }
 
@@ -84,7 +95,7 @@ async function pushToGitHub(path, content, commitMessage) {
     const putRes = await fetch(apiUrl, {
         method: 'PUT',
         headers: {
-            'Authorization': `token ${token}`,
+            'Authorization': `Bearer ${token}`,
             'Accept': 'application/vnd.github.v3+json',
             'Content-Type': 'application/json'
         },
