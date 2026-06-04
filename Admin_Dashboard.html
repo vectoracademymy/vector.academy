@@ -225,7 +225,10 @@
             const owner = document.getElementById('ghOwner').value.trim();
             const repo = document.getElementById('ghRepo').value.trim();
             const branch = document.getElementById('ghBranch').value.trim();
-            const token = document.getElementById('ghToken').value.trim();
+            let token = document.getElementById('ghToken').value.trim();
+
+            // トークンから英数字とアンダースコア以外の文字（見えないスペースや改行など）を強制排除
+            token = token.replace(/[^a-zA-Z0-9_]/g, '');
 
             saveGitHubSettings({ owner, repo, branch, token });
             alert('GitHub連携設定を保存しました。');
@@ -266,7 +269,10 @@
             const owner = document.getElementById('ghOwner').value.trim();
             const repo = document.getElementById('ghRepo').value.trim();
             const branch = document.getElementById('ghBranch').value.trim();
-            const token = document.getElementById('ghToken').value.trim();
+            let token = document.getElementById('ghToken').value.trim();
+
+            // トークンから英数字とアンダースコア以外の文字を強制排除
+            token = token.replace(/[^a-zA-Z0-9_]/g, '');
 
             if (!owner || !repo || !token) {
                 alert('所有者、リポジトリ名、およびアクセストークンを入力してからテストを実行してください。');
