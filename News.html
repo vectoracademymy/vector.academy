@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>お知らせ - Vector学院</title>
+    <meta name="description" content="Vector学院の最新お知らせ一覧です。オンライン講義情報や模擬試験について掲載しています。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- 数式ライブラリ (KaTeX) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/sample.css">
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8877046586680840" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="index.html" class="nav-logo">
+                <img src="c:\Users\nyann\Downloads\Code_Generated_Image.png" alt="Vevtor学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+            <a href="Admin_login.html" class="nav-button">
+                <p>管理者用ログイン</p>
+                <p>Admin Login</p>
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        <h1 style="text-align: center; color: #2b9d94; margin-bottom: 10px;">お知らせ</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px; font-size: 15px;">オンライン講義や試験情報などの最新ニュースをお届けします。</p>
+
+        <!-- 検索バー -->
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-box" placeholder="キーワードを入力してお知らせを検索..." oninput="handleSearch()">
+        </div>
+
+        <!-- Google Ad Unit (Middle Banner) -->
+        <div class="ad-container">
+            <div class="ad-label">広告 / Advertisement</div>
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-8877046586680840"
+                 data-ad-slot="5555555555"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+        </div>
+
+        <!-- お知らせリスト -->
+        <div class="news-list" id="newsListContainer">
+            <!-- JavaScriptで動的生成 -->
+        </div>
+
+        <!-- Google Ad Unit (Bottom Banner) -->
+        <div class="ad-container">
+            <div class="ad-label">広告 / Advertisement</div>
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-8877046586680840"
+                 data-ad-slot="6666666666"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+        </div>
+    </main>
+
+    <!-- 詳細表示モーダル -->
+    <div class="modal-overlay" id="detailModal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModalDirect()">&times;</button>
+            <div class="news-detail-header">
+                <span class="news-date" id="modalDate"></span>
+                <span class="news-badge" id="modalCategory" style="margin-left: 12px; vertical-align: middle;"></span>
+                <h2 class="news-detail-title" id="modalTitle"></h2>
+            </div>
+            <!-- Quillスタイルを適用するため ql-editor クラスを付与 -->
+            <div class="news-detail-body ql-editor" id="modalBody">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初期データ（LocalStorage空のとき用）
+        const defaultNews = [
+            {
+                id: 'demo-1',
+                title: '【重要】オンライン夏季特別集中講義の開講について',
+                category: '重要なお知らせ',
+                content: '<p>Vector学院受講生の皆様、こんにちは。</p><p>今年もいよいよ夏季特別集中講義が開講されます。すべてオンライン配信で行われますので、自宅から受講可能です。</p><p>本講義では、以下の二次関数の標準形に関する応用問題を扱います。</p><p>二次関数の一般式：</p><p class="ql-cursor">$$\\text{二次関数 } f(x) = ax^2 + bx + c$$</p><p>を平方完成すると、以下のようになります。</p><p>$$f(x) = a\\left(x + \\frac{b}{2a}\\right)^2 + \\frac{4ac - b^2}{4a}$$</p><p>講義資料（PDFファイル等）は、当日配布するリンクよりダウンロードをお願いいたします。</p><p><span style="color: rgb(230, 0, 0); font-size: large; font-family: sans-serif;">※受講期間中のログインIDは各自のマイページで確認してください。</span></p>',
+                snippet: 'Vector学院受講生の皆様、こんにちは。今年もいよいよ夏季特別集中講義が開講されます。すべてオンライン配信で行われます。',
+                date: '2026-05-20'
+            },
+            {
+                id: 'demo-2',
+                title: '模擬試験のオンライン販売を開始しました',
+                category: 'お知らせ',
+                content: '<p>本日より、最新 of オンライン模擬問題集の販売を開始いたしました。</p><p>詳細は「模擬問題販売」のページをご確認ください。数学・物理・情報の各教科についての良問を厳選しています。</p><p>数学分野では微積分の応用問題を多く掲載しています：</p><p>$$\\int_{a}^{b} x^n dx = \\left[ \\frac{x^{n+1}}{n+1} \\right]_{a}^{b} = \\frac{b^{n+1} - a^{n+1}}{n+1}$$</p><p>ぜひご活用ください。</p>',
+                snippet: '本日より、最新のオンライン模擬問題集の販売を開始いたしました。詳細は「模擬問題販売」のページをご確認ください。',
+                date: '2026-05-18'
+            }
+        ];
+
+        let allNews = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initLocalStorage();
+            loadNews();
+            renderNewsList(allNews);
+
+            // URLクエリパラメータの解析 (?id=XXX の自動展開)
+            const urlParams = new URLSearchParams(window.location.search);
+            const newsId = urlParams.get('id');
+            if (newsId) {
+                openNewsDetail(newsId);
+            }
+        });
+
+        // localStorage 初期化
+        function initLocalStorage() {
+            if (!localStorage.getItem('vector_news')) {
+                localStorage.setItem('vector_news', JSON.stringify(defaultNews));
+            }
+        }
+
+        // ニュースの読み込み
+        function loadNews() {
+            allNews = JSON.parse(localStorage.getItem('vector_news') || '[]');
+            // 新しい順に並び替え
+            allNews.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+        }
+
+        // リスト描画
+        function renderNewsList(list) {
+            const container = document.getElementById('newsListContainer');
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #888; padding: 40px;">合致するお知らせは見つかりませんでした。</div>`;
+                return;
+            }
+
+            list.forEach(news => {
+                const card = document.createElement('div');
+                card.className = 'news-card';
+                card.onclick = () => openNewsDetail(news.id);
+
+                const catClass = getCategoryClass(news.category);
+                const catText = news.category || 'お知らせ';
+
+                card.innerHTML = `
+                    <div class="news-card-header">
+                        <span class="news-date">${news.date}</span>
+                        <span class="news-badge ${catClass}">${escapeHtml(catText)}</span>
+                    </div>
+                    <h3>${escapeHtml(news.title)}</h3>
+                    <div class="news-card-snippet">${escapeHtml(news.snippet || '')}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // カテゴリクラス判定用関数
+        function getCategoryClass(category) {
+            if (category === '解説') return 'badge-explanation';
+            if (category === '重要なお知らせ') return 'badge-important';
+            return '';
+        }
+
+        // キーワード検索処理
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (!query) {
+                renderNewsList(allNews);
+                return;
+            }
+
+            const filtered = allNews.filter(news => {
+                const titleMatch = news.title.toLowerCase().includes(query);
+                // HTML本文をプレーンテキストに直して検索対象にする
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = news.content;
+                const textContent = tempDiv.textContent.toLowerCase();
+                const contentMatch = textContent.includes(query);
+
+                return titleMatch || contentMatch;
+            });
+
+            renderNewsList(filtered);
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // 詳細モーダル展開
+        function openNewsDetail(id) {
+            const news = allNews.find(n => n.id === id);
+            if (!news) return;
+
+            document.getElementById('modalDate').textContent = news.date;
+            document.getElementById('modalTitle').textContent = news.title;
+            
+            const categoryEl = document.getElementById('modalCategory');
+            if (categoryEl) {
+                categoryEl.textContent = news.category || 'お知らせ';
+                categoryEl.className = 'news-badge ' + getCategoryClass(news.category);
+            }
+            
+            const bodyContainer = document.getElementById('modalBody');
+            bodyContainer.innerHTML = news.content;
+
+            // 数式（KaTeX）の動的レンダリング
+            renderMathFormulas(bodyContainer);
+
+            // モーダル表示
+            document.getElementById('detailModal').classList.add('active');
+            document.body.style.overflow = 'hidden'; // 背面スクロール抑止
+        }
+
+        // 数式レンダリング（Quillのspan.ql-formula形式、およびテキスト内の$$/$/\(/\)などのTeX構文両対応）
+        function renderMathFormulas(container) {
+            // 1. Quill 2.0 形式の数式 (<span class="ql-formula">) をレンダリング
+            const formulas = container.querySelectorAll('.ql-formula');
+            formulas.forEach(formulaEl => {
+                const tex = formulaEl.getAttribute('data-value');
+                if (tex) {
+                    try {
+                        const isBlock = formulaEl.parentElement.tagName === 'P' && 
+                                        formulaEl.parentElement.textContent.trim() === formulaEl.textContent.trim();
+                        katex.render(tex, formulaEl, {
+                            throwOnError: false,
+                            displayMode: isBlock
+                        });
+                    } catch (err) {
+                        console.error('KaTeX error (ql-formula):', err);
+                    }
+                }
+            });
+
+            // 2. テキスト内の $$...$$ や $...$ を含むTeX構文を自動展開
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(container, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        // モーダルを閉じる
+        function closeModal(event) {
+            // 背景クリック時のみ閉じる
+            if (event.target.id === 'detailModal') {
+                closeModalDirect();
+            }
+        }
+
+        function closeModalDirect() {
+            document.getElementById('detailModal').classList.remove('active');
+            document.body.style.overflow = ''; // スクロール再開
+            
+            // クエリパラメータをURLから削除（元のクリーンなアドレスに戻す）
+            const url = new URL(window.location);
+            url.searchParams.delete('id');
+            window.history.pushState({}, '', url);
+        }
+    </script>
+
+    <!-- Sticky Bottom Ad Bar -->
+    <div class="sticky-ad-bar" id="stickyAdBar">
+        <div class="sticky-ad-inner">
+            <button class="sticky-ad-close" onclick="closeStickyAd()" title="広告を閉じる">&times;</button>
+            <ins class="adsbygoogle"
+                 style="display:block; min-height: 90px; width: 100%;"
+                 data-ad-client="ca-pub-8877046586680840"
+                 data-ad-slot="9999999999"
+                 data-ad-format="horizontal"
+                 data-full-width-responsive="false"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+                 function closeStickyAd() {
+                     const adBar = document.getElementById('stickyAdBar');
+                     if (adBar) {
+                         adBar.classList.add('hidden');
+                         document.body.style.paddingBottom = '0';
+                     }
+                 }
+            </script>
+        </div>
+    </div>
+</body>
+
+</html>

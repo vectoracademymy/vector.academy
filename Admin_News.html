@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>お知らせ管理 - Vector学院</title>
+    <meta name="description" content="Vector学院のお知らせ管理ページです。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- 数式ライブラリ (KaTeX) - Quillの前にロードする必要あり -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    
+    <!-- リッチテキストエディタ (Quill 2.0.2) -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@enzedonline/quill-blot-formatter2@3.1.1/dist/css/quill-blot-formatter2.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@enzedonline/quill-blot-formatter2@3.1.1/dist/index.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/sample.css">
+    
+    <script>
+        // セッションガード
+        if (sessionStorage.getItem('admin_auth') !== 'true') {
+            window.location.replace('Admin_login.html');
+        }
+    </script>
+</head>
+
+<body>
+    <header class="fixed-header">
+        <div class="logo">
+            <a href="index.html" class="nav-logo">
+                <img src="c:\Users\nyann\Downloads\Code_Generated_Image.png" alt="Vevtor学院">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-button">
+                <p>ホーム</p>
+                <p>Home</p>
+            </a>
+            <a href="News.html" class="nav-button">
+                <p>お知らせ</p>
+                <p>News</p>
+            </a>
+            <a href="Exam_News.html" class="nav-button">
+                <p>解答速報</p>
+                <p>Exam News</p>
+            </a>
+            <a href="Mock_Exam_Shop.html" class="nav-button">
+                <p>模擬問題販売</p>
+                <p>Mock Exam Shop</p>
+            </a>
+            <a href="Help.html" class="nav-button">
+                <p>お問い合わせ</p>
+                <p>Help</p>
+            </a>
+            <a href="Admin_login.html" class="nav-button">
+                <p>管理者用ログイン</p>
+                <p>Admin Login</p>
+            </a>
+        </nav>
+    </header>
+
+    <main class="dashboard-container">
+        <div class="dashboard-header">
+            <div>
+                <h1>お知らせ管理</h1>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">お知らせの閲覧・検索・作成・編集が行えます。</p>
+            </div>
+            <a href="Admin_Dashboard.html" class="btn-secondary">ダッシュボードへ戻る</a>
+        </div>
+
+        <!-- 一覧・管理画面 -->
+        <div class="admin-news-container" id="listView">
+            <div class="admin-news-header">
+                <h2>登録済みのお知らせ一覧</h2>
+                <button class="btn-primary" onclick="showEditor()">＋ 新規お知らせ作成</button>
+            </div>
+            
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">日付</th>
+                        <th style="width: 60%;">タイトル</th>
+                        <th style="width: 25%;">アクション</th>
+                    </tr>
+                </thead>
+                <tbody id="newsTableBody">
+                    <!-- JavaScriptで動的生成 -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 作成・編集エディタ画面 -->
+        <div class="admin-news-container" id="editorView" style="display: none;">
+            <div class="admin-news-header">
+                <h2 id="editorTitle">お知らせの作成</h2>
+                <button class="btn-secondary" onclick="hideEditor()">キャンセル</button>
+            </div>
+
+            <form class="editor-form" onsubmit="saveNews(event)">
+                <input type="hidden" id="editNewsId">
+                
+                <div class="editor-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 2; min-width: 300px;">
+                        <label for="newsTitle">タイトル</label>
+                        <input type="text" id="newsTitle" class="editor-title-input" required placeholder="お知らせのタイトルを入力してください">
+                    </div>
+                    <div style="flex: 1; min-width: 180px;">
+                        <label for="newsCategory">カテゴリ</label>
+                        <select id="newsCategory" class="editor-title-input" style="font-weight: normal; background-color: white; cursor: pointer;">
+                            <option value="お知らせ">お知らせ</option>
+                            <option value="解説">解説</option>
+                            <option value="重要なお知らせ">重要なお知らせ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="editor-group">
+                    <label>本文（画像ドラッグ＆ドロップ、数式挿入、文字装飾可）</label>
+                    <!-- Quillエディタ配置箇所 -->
+                    <div id="editor-container"></div>
+                </div>
+
+                <div class="editor-actions">
+                    <button type="button" class="btn-secondary" onclick="hideEditor()">キャンセル</button>
+                    <button type="submit" class="btn-primary">保存する</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        let quill;
+        
+        // 初期データ投入（ダミーデータ）
+        const defaultNews = [
+            {
+                id: 'demo-1',
+                title: '【重要】オンライン夏季特別集中講義の開講について',
+                category: '重要なお知らせ',
+                content: '<p>Vector学院受講生の皆様、こんにちは。</p><p>今年もいよいよ夏季特別集中講義が開講されます。すべてオンライン配信で行われますので、自宅から受講可能です。</p><p>本講義では、以下の二次関数の標準形に関する応用問題を扱います。</p><p>二次関数の一般式：</p><p class="ql-cursor">$$\\text{二次関数 } f(x) = ax^2 + bx + c$$</p><p>を平方完成すると、以下のようになります。</p><p>$$f(x) = a\\left(x + \\frac{b}{2a}\\right)^2 + \\frac{4ac - b^2}{4a}$$</p><p>講義資料（PDFファイル等）は、当日配布するリンクよりダウンロードをお願いいたします。</p><p><span style="color: rgb(230, 0, 0); font-size: large; font-family: sans-serif;">※受講期間中のログインIDは各自のマイページで確認してください。</span></p>',
+                snippet: 'Vector学院受講生の皆様、こんにちは。今年もいよいよ夏季特別集中講義が開講されます。すべてオンライン配信で行われます。',
+                date: '2026-05-20'
+            },
+            {
+                id: 'demo-2',
+                title: '模擬試験のオンライン販売を開始しました',
+                category: 'お知らせ',
+                content: '<p>本日より、最新のオンライン模擬問題集の販売を開始いたしました。</p><p>詳細は「模擬問題販売」のページをご確認ください。数学・物理・情報の各教科についての良問を厳選しています。</p><p>数学分野では微積分の応用問題を多く掲載しています：</p><p>$$\\int_{a}^{b} x^n dx = \\left[ \\frac{x^{n+1}}{n+1} \\right]_{a}^{b} = \\frac{b^{n+1} - a^{n+1}}{n+1}$$</p><p>ぜひご活用ください。</p>',
+                snippet: '本日より、最新のオンライン模擬問題集の販売を開始いたしました。詳細は「模擬問題販売」のページをご確認ください。',
+                date: '2026-05-18'
+            }
+        ];
+
+        // 読み込み時に実行
+        window.addEventListener('DOMContentLoaded', () => {
+            initLocalStorage();
+            renderTable();
+            initQuill();
+        });
+
+        // localStorage の初期化
+        function initLocalStorage() {
+            if (!localStorage.getItem('vector_news')) {
+                localStorage.setItem('vector_news', JSON.stringify(defaultNews));
+            }
+        }
+
+        // Quillエディタの初期化
+        function initQuill() {
+            // BlotFormatterとそのアライメントフォーマットの登録
+            const BlotFormatter = QuillBlotFormatter2.default;
+            const { createImageAlignAttributor, createIframeAlignAttributor } = QuillBlotFormatter2;
+            Quill.register(createImageAlignAttributor(Quill), true);
+            Quill.register(createIframeAlignAttributor(Quill), true);
+            Quill.register('modules/blotFormatter2', BlotFormatter);
+
+            // Quillツールバーの設定
+            const toolbarOptions = [
+                [{ 'font': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline', 'strike'],        // 装飾
+                [{ 'color': [] }, { 'background': [] }],          // 色設定
+                [{ 'align': [] }],                                // 文字寄せ
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],     // 箇条書き
+                ['link', 'image', 'formula'],                     // リンク、画像、数式
+                ['clean']                                         // 書式クリア
+            ];
+
+            quill = new Quill('#editor-container', {
+                modules: {
+                    toolbar: toolbarOptions,
+                    blotFormatter2: {}
+                },
+                theme: 'snow',
+                placeholder: 'ここに本文を入力してください。画像は直接貼り付け（コピペ・ドラッグ＆ドロップ）可能です。数式は「f(x)」ボタンからTeX記法で入力できます。'
+            });
+        }
+
+        // 一覧テーブルを描画
+        function renderTable() {
+            const newsList = JSON.parse(localStorage.getItem('vector_news') || '[]');
+            const tableBody = document.getElementById('newsTableBody');
+            tableBody.innerHTML = '';
+
+            if (newsList.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #888;">登録されているお知らせはありません。</td></tr>`;
+                return;
+            }
+
+            // 新しい日付順にソートして描画
+            newsList.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+
+            newsList.forEach(news => {
+                const tr = document.createElement('tr');
+                const catClass = getCategoryClass(news.category);
+                const catText = escapeHtml(news.category || 'お知らせ');
+                tr.innerHTML = `
+                    <td>${news.date}</td>
+                    <td>
+                        <span class="news-badge ${catClass}" style="margin-right: 8px;">${catText}</span>
+                        <strong>${escapeHtml(news.title)}</strong>
+                    </td>
+                    <td>
+                        <button class="action-badge badge-edit" onclick="editNews('${news.id}')">編集</button>
+                        <button class="action-badge badge-delete" onclick="deleteNews('${news.id}')">削除</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // カテゴリクラス判定用関数
+        function getCategoryClass(category) {
+            if (category === '解説') return 'badge-explanation';
+            if (category === '重要なお知らせ') return 'badge-important';
+            return '';
+        }
+
+        // エディタ画面表示 (新規)
+        function showEditor() {
+            document.getElementById('editNewsId').value = '';
+            document.getElementById('newsTitle').value = '';
+            document.getElementById('newsCategory').value = 'お知らせ';
+            quill.setContents([]);
+            
+            document.getElementById('editorTitle').textContent = 'お知らせの新規作成';
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('editorView').style.display = 'block';
+        }
+
+        // エディタ画面非表示
+        function hideEditor() {
+            document.getElementById('listView').style.display = 'block';
+            document.getElementById('editorView').style.display = 'none';
+        }
+
+        // HTMLエスケープ処理
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // お知らせの編集開始
+        function editNews(id) {
+            const newsList = JSON.parse(localStorage.getItem('vector_news') || '[]');
+            const target = newsList.find(n => n.id === id);
+            if (!target) return;
+
+            document.getElementById('editNewsId').value = target.id;
+            document.getElementById('newsTitle').value = target.title;
+            document.getElementById('newsCategory').value = target.category || 'お知らせ';
+            
+            // HTMLコンテンツをQuillにロード
+            quill.clipboard.dangerouslyPasteHTML(target.content);
+
+            document.getElementById('editorTitle').textContent = 'お知らせの編集';
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('editorView').style.display = 'block';
+        }
+
+        // お知らせの削除
+        function deleteNews(id) {
+            if (!confirm('本当にこのお知らせを削除しますか？')) return;
+
+            let newsList = JSON.parse(localStorage.getItem('vector_news') || '[]');
+            newsList = newsList.filter(n => n.id !== id);
+            localStorage.setItem('vector_news', JSON.stringify(newsList));
+            
+            renderTable();
+        }
+
+        // HTMLからスニペット（プレーンテキスト）を生成する関数
+        function getSnippet(htmlStr, maxLen = 120) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlStr;
+            const text = tempDiv.textContent || tempDiv.innerText || "";
+            return text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
+        }
+
+        // HTMLをエディタからクリーンに取得する関数（Quill 2.0のformulaバグ対策）
+        function getCleanHTMLFromEditor(quillInstance) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = quillInstance.root.innerHTML;
+            
+            // 数式（ql-formula）要素をクリーンアップし、data-valueを確実に保持する
+            const formulas = tempDiv.querySelectorAll('.ql-formula');
+            formulas.forEach(formulaEl => {
+                const tex = formulaEl.getAttribute('data-value');
+                formulaEl.innerHTML = ''; // KaTeXのレンダリング済みHTMLをクリア
+                formulaEl.removeAttribute('contenteditable');
+                if (tex) {
+                    formulaEl.setAttribute('data-value', tex);
+                }
+            });
+            
+            // 不要なエディタ専用カーソルなどの要素を除去
+            const cursors = tempDiv.querySelectorAll('.ql-cursor');
+            cursors.forEach(c => c.remove());
+            
+            return tempDiv.innerHTML;
+        }
+
+        // 保存処理
+        function saveNews(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('editNewsId').value;
+            const title = document.getElementById('newsTitle').value;
+            const category = document.getElementById('newsCategory').value; // カテゴリを取得
+            const content = getCleanHTMLFromEditor(quill); // Quill 2.0のバグを回避してHTMLをクリーンに取得
+            const snippet = getSnippet(content);
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+            let newsList = JSON.parse(localStorage.getItem('vector_news') || '[]');
+
+            if (id) {
+                // 既存の編集
+                const index = newsList.findIndex(n => n.id === id);
+                if (index !== -1) {
+                    newsList[index].title = title;
+                    newsList[index].category = category; // カテゴリを更新
+                    newsList[index].content = content;
+                    newsList[index].snippet = snippet;
+                    // 編集時は日付は今日の日付に更新します
+                    newsList[index].date = today;
+                }
+            } else {
+                // 新規作成
+                const newId = 'news-' + Date.now();
+                newsList.push({
+                    id: newId,
+                    title: title,
+                    category: category, // カテゴリを追加
+                    content: content,
+                    snippet: snippet,
+                    date: today
+                });
+            }
+
+            localStorage.setItem('vector_news', JSON.stringify(newsList));
+            hideEditor();
+            renderTable();
+        }
+    </script>
+</body>
+
+</html>
